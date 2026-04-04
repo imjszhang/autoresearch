@@ -17,11 +17,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from kernels import get_kernel
+# Attention backend: FA3 requires Hopper (SM 9.0); fall back to PyTorch SDPA otherwise
+_use_fa3 = False
 cap = torch.cuda.get_device_capability()
-# varunneal's FA3 is Hopper only, use kernels-community on non-Hopper GPUs
-repo = "varunneal/flash-attention-3" if cap == (9, 0) else "kernels-community/flash-attn3"
-fa3 = get_kernel(repo).flash_attn_interface
+if cap == (9, 0):
+    from kernels import get_kernel
+    fa3 = get_kernel('varunneal/flash-attention-3').flash_attn_interface
+    _use_fa3 = True
+    print('Using Flash Attention 3 (Hopper)')
+else:
+    print(f'GPU SM {cap[0]}.{cap[1]}: using PyTorch SDPA (FA3 requires Hopper)')
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
@@ -90,7 +95,20 @@ class CausalSelfAttention(nn.Module):
         q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
         q, k = norm(q), norm(k)
 
-        y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
+        if _use_fa3:
+            y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
+        else:
+            # PyTorch SDPA: expects (B, H, T, D)
+            q_sdpa = q.transpose(1, 2)
+            k_sdpa = k.transpose(1, 2)
+            v_sdpa = v.transpose(1, 2)
+            # Expand KV heads for GQA
+            if self.n_kv_head < self.n_head:
+                rep = self.n_head // self.n_kv_head
+                k_sdpa = k_sdpa.repeat_interleave(rep, dim=1)
+                v_sdpa = v_sdpa.repeat_interleave(rep, dim=1)
+            y = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa, is_causal=True)
+            y = y.transpose(1, 2)
         y = y.contiguous().view(B, T, -1)
         y = self.c_proj(y)
         return y
@@ -448,7 +466,7 @@ FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 
 # Model size
 DEPTH = 8               # number of transformer layers
-DEVICE_BATCH_SIZE = 128  # per-device batch size (reduce if OOM)
+DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
 
 # ---------------------------------------------------------------------------
 # Setup: tokenizer, model, optimizer, dataloader
@@ -505,7 +523,7 @@ optimizer = model.setup_optimizer(
     weight_decay=WEIGHT_DECAY,
 )
 
-model = torch.compile(model, dynamic=False)
+# model = torch.compile(model, dynamic=False)  # disabled for initial validation
 
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
 x, y, epoch = next(train_loader)  # prefetch first batch
