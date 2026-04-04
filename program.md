@@ -52,6 +52,7 @@ Apply these rules in order:
 2. **GUARD** — If δ < 0.3: make incremental improvements (hyperparameter tuning, minor structural adjustments, small optimizations).
 3. **BREAK** — If δ > 0.7: attempt a fundamental change (new attention mechanism, different architecture, novel training technique, radical hyperparameter shift).
 4. **SIMPLIFY** — If 0.3 ≤ δ ≤ 0.7: reduce complexity first, then reassess.
+5. **SIMPLIFY escape** — If the last 3 consecutive strategies were all SIMPLIFY and all resulted in `discard`, AND ΔC ≤ 0 (no complexity growth), force BREAK strategy regardless of δ value.
 
 You MUST always compute δ and follow the prescribed strategy. Do not override the decision rules based on your own intuition.
 
