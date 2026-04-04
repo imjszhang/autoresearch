@@ -10,8 +10,9 @@ This is an experiment to have the LLM do its own research.
    - `prepare.py` — fixed constants, data prep, tokenizer, dataloader, evaluation. Do not modify.
    - `train.py` — the file you modify. Model architecture, optimizer, training loop.
 3. Verify data exists: Check that `~/.cache/autoresearch/` contains data shards and a tokenizer. If not, tell the human to run `uv run prepare.py`.
-4. Initialize `results.tsv` with just the header row. The baseline will be recorded after the first run.
-5. Confirm and go.
+4. **Check for existing progress**: If `results.tsv` already exists and contains data rows beyond the header, this is a **resumed session**. Read the existing data, count the data rows to determine the current iteration number, and skip directly to the experiment loop. Do NOT re-initialize `results.tsv` or re-run the baseline.
+5. **Fresh start only**: If `results.tsv` does not exist or contains only the header, initialize it with just the header row. The baseline will be recorded after the first run.
+6. Confirm and go.
 
 ## Experimentation
 
@@ -81,7 +82,7 @@ Do NOT commit results.tsv — leave it untracked by git.
 
 ## The experiment loop
 
-**The first run**: Your very first run should always be to establish the baseline, so you will run the training script as is.
+**The first run**: If this is a fresh start (no data in `results.tsv`), your first run establishes the baseline — run the training script as is, without any modifications. If resuming, skip this and continue from the next iteration.
 
 LOOP (up to 200 iterations):
 
