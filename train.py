@@ -560,7 +560,7 @@ step = 0
 
 while True:
     torch.cuda.synchronize()
-    t0 = time.time()
+    t0 = time.perf_counter()
     for micro_step in range(grad_accum_steps):
         with autocast_ctx:
             loss = model(x, y)
@@ -590,8 +590,8 @@ while True:
         exit(1)
 
     torch.cuda.synchronize()
-    t1 = time.time()
-    dt = t1 - t0
+    t1 = time.perf_counter()
+    dt = max(t1 - t0, 1e-9)
 
     if step > 10:
         total_training_time += dt
