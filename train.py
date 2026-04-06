@@ -27,6 +27,11 @@ if cap == (9, 0):
     print('Using Flash Attention 3 (Hopper)')
 else:
     print(f'GPU SM {cap[0]}.{cap[1]}: using PyTorch SDPA (FA3 requires Hopper)')
+    # Newer archs (e.g. SM 12 / Blackwell): cudnn flash SDP may lack kernels; use math/mem-efficient.
+    try:
+        torch.backends.cuda.enable_flash_sdp(False)
+    except Exception:
+        pass
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
