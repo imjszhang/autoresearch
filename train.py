@@ -448,7 +448,7 @@ class MuonAdamW(torch.optim.Optimizer):
 # ---------------------------------------------------------------------------
 
 # Model architecture
-ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
+ASPECT_RATIO = 48       # model_dim = depth * ASPECT_RATIO (narrower: more train steps in fixed wall time)
 HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 
@@ -592,6 +592,8 @@ while True:
     torch.cuda.synchronize()
     t1 = time.perf_counter()
     dt = max(t1 - t0, 1e-9)
+    # WSL/host scheduling can yield huge perf_counter jumps; cap so TIME_BUDGET is not drained in few steps.
+    dt = min(dt, 45.0)
 
     if step > 10:
         total_training_time += dt
