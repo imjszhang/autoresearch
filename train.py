@@ -466,7 +466,7 @@ SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.14
 ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
 WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
-WARMDOWN_RATIO = 0.55   # fraction of time budget for LR warmdown (BREAK: longer tail)
+WARMDOWN_RATIO = 0.54   # fraction of time budget for LR warmdown (BREAK: longer tail)
 FINAL_LR_FRAC = 0.06    # final LR as fraction of initial (mild floor vs pure zero)
 
 # Model size
