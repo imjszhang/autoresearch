@@ -1,17 +1,14 @@
 """Autoresearch pretraining (single GPU); run: uv run train.py"""
 
-import os
+import gc, math, os, time
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-
-import gc, math, time
 from dataclasses import dataclass, asdict
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Attention backend: FA3 requires Hopper (SM 9.0); fall back to PyTorch SDPA otherwise
 _use_fa3 = False
 cap = torch.cuda.get_device_capability()
 if cap == (9, 0):
