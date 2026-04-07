@@ -1,16 +1,10 @@
-"""
-Autoresearch pretraining script. Single-GPU, single-file.
-Cherry-picked and simplified from nanochat.
-Usage: uv run train.py
-"""
+"""Autoresearch pretraining (single GPU); run: uv run train.py"""
 
 import os
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
-import gc
-import math
-import time
+import gc, math, time
 from dataclasses import dataclass, asdict
 
 import torch
@@ -35,10 +29,6 @@ else:
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
-# ---------------------------------------------------------------------------
-# GPT Model
-# ---------------------------------------------------------------------------
-
 @dataclass
 class GPTConfig:
     sequence_len: int = 2048
@@ -55,9 +45,7 @@ def norm(x):
 
 
 def has_ve(layer_idx, n_layer):
-    """Returns True if layer should have Value Embedding (alternating, last always included)."""
     return layer_idx % 2 == (n_layer - 1) % 2
-
 
 def apply_rotary_emb(x, cos, sin):
     assert x.ndim == 4
@@ -66,7 +54,6 @@ def apply_rotary_emb(x, cos, sin):
     y1 = x1 * cos + x2 * sin
     y2 = x1 * (-sin) + x2 * cos
     return torch.cat([y1, y2], 3)
-
 
 class CausalSelfAttention(nn.Module):
     def __init__(self, config, layer_idx):
@@ -89,8 +76,6 @@ class CausalSelfAttention(nn.Module):
         q = self.c_q(x).view(B, T, self.n_head, self.head_dim)
         k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
         v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
-
-        # Value residual (ResFormer): mix in value embedding with input-dependent gate per head
         if ve is not None:
             ve = ve.view(B, T, self.n_kv_head, self.head_dim)
             gate = 2 * torch.sigmoid(self.ve_gate(x[..., :self.ve_gate_channels]))
@@ -103,11 +88,9 @@ class CausalSelfAttention(nn.Module):
         if _use_fa3:
             y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
         else:
-            # PyTorch SDPA: expects (B, H, T, D)
             q_sdpa = q.transpose(1, 2)
             k_sdpa = k.transpose(1, 2)
             v_sdpa = v.transpose(1, 2)
-            # Expand KV heads for GQA
             if self.n_kv_head < self.n_head:
                 rep = self.n_head // self.n_kv_head
                 k_sdpa = k_sdpa.repeat_interleave(rep, dim=1)
@@ -117,7 +100,6 @@ class CausalSelfAttention(nn.Module):
         y = y.contiguous().view(B, T, -1)
         y = self.c_proj(y)
         return y
-
 
 class MLP(nn.Module):
     def __init__(self, config):
@@ -131,7 +113,6 @@ class MLP(nn.Module):
         x = self.c_proj(x)
         return x
 
-
 class Block(nn.Module):
     def __init__(self, config, layer_idx):
         super().__init__()
@@ -142,7 +123,6 @@ class Block(nn.Module):
         x = x + self.attn(norm(x), ve, cos_sin, window_size)
         x = x + self.mlp(norm(x))
         return x
-
 
 class GPT(nn.Module):
     def __init__(self, config):
@@ -156,14 +136,12 @@ class GPT(nn.Module):
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.resid_lambdas = nn.Parameter(torch.ones(config.n_layer))
         self.x0_lambdas = nn.Parameter(torch.zeros(config.n_layer))
-        # Value embeddings
         head_dim = config.n_embd // config.n_head
         kv_dim = config.n_kv_head * head_dim
         self.value_embeds = nn.ModuleDict({
             str(i): nn.Embedding(config.vocab_size, kv_dim)
             for i in range(config.n_layer) if has_ve(i, config.n_layer)
         })
-        # Rotary embeddings
         self.rotary_seq_len = config.sequence_len * 10
         cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
         self.register_buffer("cos", cos, persistent=False)
@@ -171,10 +149,8 @@ class GPT(nn.Module):
 
     @torch.no_grad()
     def init_weights(self):
-        # Embedding and unembedding
         torch.nn.init.normal_(self.transformer.wte.weight, mean=0.0, std=1.0)
         torch.nn.init.normal_(self.lm_head.weight, mean=0.0, std=0.001)
-        # Transformer blocks
         n_embd = self.config.n_embd
         s = 3**0.5 * n_embd**-0.5
         for block in self.transformer.h:
@@ -184,21 +160,16 @@ class GPT(nn.Module):
             torch.nn.init.zeros_(block.attn.c_proj.weight)
             torch.nn.init.uniform_(block.mlp.c_fc.weight, -s, s)
             torch.nn.init.zeros_(block.mlp.c_proj.weight)
-        # Per-layer scalars
         self.resid_lambdas.fill_(1.0)
         self.x0_lambdas.fill_(0.1)
-        # Value embeddings
         for ve in self.value_embeds.values():
             torch.nn.init.uniform_(ve.weight, -s, s)
-        # Gate weights init to zero (sigmoid(0)=0.5, scaled by 2 -> 1.0 = neutral)
         for block in self.transformer.h:
             if block.attn.ve_gate is not None:
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
-        # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
         cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
         self.cos, self.sin = cos, sin
-        # Cast embeddings to bf16
         self.transformer.wte.to(dtype=torch.bfloat16)
         for ve in self.value_embeds.values():
             ve.to(dtype=torch.bfloat16)
@@ -229,7 +200,6 @@ class GPT(nn.Module):
         return window_sizes
 
     def estimate_flops(self):
-        """Estimated FLOPs per token (forward + backward)."""
         nparams = sum(p.numel() for p in self.parameters())
         value_embeds_numel = sum(ve.weight.numel() for ve in self.value_embeds.values())
         nparams_exclude = (self.transformer.wte.weight.numel() + value_embeds_numel +
@@ -267,7 +237,6 @@ class GPT(nn.Module):
         x0_params = [self.x0_lambdas]
         assert len(list(self.parameters())) == (len(matrix_params) + len(embedding_params) +
             len(lm_head_params) + len(value_embeds_params) + len(resid_params) + len(x0_params))
-        # Scale LR ∝ 1/√dmodel (tuned at 768 dim)
         dmodel_lr_scale = (model_dim / 768) ** -0.5
         print(f"Scaling AdamW LRs by 1/sqrt({model_dim}/768) = {dmodel_lr_scale:.6f}")
         param_groups = [
@@ -313,10 +282,6 @@ class GPT(nn.Module):
             return loss
         return logits
 
-# ---------------------------------------------------------------------------
-# Optimizer (MuonAdamW, single GPU only)
-# ---------------------------------------------------------------------------
-
 polar_express_coeffs = [
     (8.156554524902461, -22.48329292557795, 15.878769915207462),
     (4.042929935166739, -2.808917465908714, 0.5000178451051316),
@@ -339,11 +304,9 @@ def adamw_step_fused(p, grad, exp_avg, exp_avg_sq, step_t, lr_t, beta1_t, beta2_
 @torch.compile(dynamic=False, fullgraph=True)
 def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momentum_buffer,
                     momentum_t, lr_t, wd_t, beta2_t, ns_steps, red_dim):
-    # Nesterov momentum
     momentum = momentum_t.to(stacked_grads.dtype)
     momentum_buffer.lerp_(stacked_grads, 1 - momentum)
     g = stacked_grads.lerp_(momentum_buffer, momentum)
-    # Polar express orthogonalization
     X = g.bfloat16()
     X = X / (X.norm(dim=(-2, -1), keepdim=True) * 1.02 + 1e-6)
     if g.size(-2) > g.size(-1):
@@ -357,7 +320,6 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
             B = b * A + c * (A @ A)
             X = a * X + B @ X
     g = X
-    # NorMuon variance reduction
     beta2 = beta2_t.to(g.dtype)
     v_mean = g.float().square().mean(dim=red_dim, keepdim=True)
     red_dim_size = g.size(red_dim)
@@ -369,7 +331,6 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
     v_norm_new = scaled_sq_sum.sum(dim=(-2, -1), keepdim=True).sqrt()
     final_scale = step_size * (v_norm / v_norm_new.clamp_min(1e-10))
     g = g * final_scale.to(g.dtype)
-    # Cautious weight decay + parameter update
     lr = lr_t.to(g.dtype)
     wd = wd_t.to(g.dtype)
     mask = (g * stacked_params) >= 0
@@ -377,11 +338,8 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
 
 
 class MuonAdamW(torch.optim.Optimizer):
-    """Combined optimizer: Muon for 2D matrix params, AdamW for others."""
-
     def __init__(self, param_groups):
         super().__init__(param_groups, defaults={})
-        # 0-D CPU tensors to avoid torch.compile recompilation when values change
         self._adamw_step_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
         self._adamw_lr_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
         self._adamw_beta1_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
@@ -448,34 +406,21 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-# ---------------------------------------------------------------------------
-# Hyperparameters (edit these directly, no CLI flags needed)
-# ---------------------------------------------------------------------------
-
-# Model architecture
-ASPECT_RATIO = 48       # model_dim = depth * ASPECT_RATIO (narrower: more train steps in fixed wall time)
-HEAD_DIM = 128          # target head dimension for attention
-WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
-
-# Optimization
-TOTAL_BATCH_SIZE = 2**18 # ~262K tokens per optimizer step; more outer steps per wall-clock second
-EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
-UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
-MATRIX_LR = 0.04        # learning rate for matrix parameters (Muon)
-SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
+ASPECT_RATIO = 48
+HEAD_DIM = 128
+WINDOW_PATTERN = "SSSL"
+TOTAL_BATCH_SIZE = 2**18
+EMBEDDING_LR = 0.6
+UNEMBEDDING_LR = 0.004
+MATRIX_LR = 0.04
+SCALAR_LR = 0.5
 WEIGHT_DECAY = 0.14
-ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
-WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
-WARMDOWN_RATIO = 0.54   # fraction of time budget for LR warmdown (BREAK: longer tail)
-FINAL_LR_FRAC = 0.06    # final LR as fraction of initial (mild floor vs pure zero)
-
-# Model size
-DEPTH = 8               # number of transformer layers
-DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
-
-# ---------------------------------------------------------------------------
-# Setup: tokenizer, model, optimizer, dataloader
-# ---------------------------------------------------------------------------
+ADAM_BETAS = (0.8, 0.95)
+WARMUP_RATIO = 0.0
+WARMDOWN_RATIO = 0.54
+FINAL_LR_FRAC = 0.06
+DEPTH = 8
+DEVICE_BATCH_SIZE = 32
 
 t_start = time.time()
 torch.manual_seed(42)
@@ -508,9 +453,7 @@ model.to_empty(device=device)
 model.init_weights()
 
 param_counts = model.num_scaling_params()
-print("Parameter counts:")
-for key, value in param_counts.items():
-    print(f"  {key:24s}: {value:,}")
+print("Parameter counts:\n" + "\n".join(f"  {k:24s}: {v:,}" for k, v in param_counts.items()))
 num_params = param_counts['total']
 num_flops_per_token = model.estimate_flops()
 print(f"Estimated FLOPs per token: {num_flops_per_token:e}")
@@ -531,12 +474,9 @@ optimizer = model.setup_optimizer(
 model = torch.compile(model, dynamic=False)
 
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
-x, y, epoch = next(train_loader)  # prefetch first batch
-
+x, y, epoch = next(train_loader)
 print(f"Time budget: {TIME_BUDGET}s")
 print(f"Gradient accumulation steps: {grad_accum_steps}")
-
-# Schedules (all based on progress = training_time / TIME_BUDGET)
 
 def get_lr_multiplier(progress):
     if progress < WARMUP_RATIO:
@@ -554,10 +494,6 @@ def get_muon_momentum(step):
 def get_weight_decay(progress):
     return WEIGHT_DECAY * (1 - progress)
 
-# ---------------------------------------------------------------------------
-# Training loop
-# ---------------------------------------------------------------------------
-
 t_start_training = time.time()
 smooth_train_loss = 0
 total_training_time = 0
@@ -573,8 +509,6 @@ while True:
         loss = loss / grad_accum_steps
         loss.backward()
         x, y, epoch = next(train_loader)
-
-    # Progress and schedules
     progress = min(total_training_time / TIME_BUDGET, 1.0)
     lrm = get_lr_multiplier(progress)
     muon_momentum = get_muon_momentum(step)
@@ -588,8 +522,6 @@ while True:
     model.zero_grad(set_to_none=True)
 
     train_loss_f = train_loss.item()
-
-    # Fast fail: abort if loss is exploding or NaN
     if math.isnan(train_loss_f) or train_loss_f > 100:
         print("FAIL")
         exit(1)
@@ -597,13 +529,10 @@ while True:
     torch.cuda.synchronize()
     t1 = time.perf_counter()
     dt = max(t1 - t0, 1e-9)
-    # WSL/host scheduling can yield huge perf_counter jumps; cap so TIME_BUDGET is not drained in few steps.
     dt = min(dt, 45.0)
 
     if step > 10:
         total_training_time += dt
-
-    # Logging
     ema_beta = 0.9
     smooth_train_loss = ema_beta * smooth_train_loss + (1 - ema_beta) * train_loss_f
     debiased_smooth_loss = smooth_train_loss / (1 - ema_beta**(step + 1))
@@ -613,8 +542,6 @@ while True:
     remaining = max(0, TIME_BUDGET - total_training_time)
 
     print(f"\rstep {step:05d} ({pct_done:.1f}%) | loss: {debiased_smooth_loss:.6f} | lrm: {lrm:.2f} | dt: {dt*1000:.0f}ms | tok/sec: {tok_per_sec:,} | mfu: {mfu:.1f}% | epoch: {epoch} | remaining: {remaining:.0f}s    ", end="", flush=True)
-
-    # GC management (Python's GC causes ~500ms stalls)
     if step == 0:
         gc.collect()
         gc.freeze()
@@ -623,23 +550,16 @@ while True:
         gc.collect()
 
     step += 1
-
-    # Time's up — but only stop after warmup steps so we don't count compilation
     if step > 10 and total_training_time >= TIME_BUDGET:
         break
 
-print()  # newline after \r training log
-
+print()
 total_tokens = step * TOTAL_BATCH_SIZE
-
-# Final eval
 model.eval()
 with autocast_ctx:
     val_bpb = evaluate_bpb(model, tokenizer, DEVICE_BATCH_SIZE)
 
-# Final summary
 t_end = time.time()
-startup_time = t_start_training - t_start
 steady_state_mfu = 100 * num_flops_per_token * TOTAL_BATCH_SIZE * (step - 10) / total_training_time / H100_BF16_PEAK_FLOPS if total_training_time > 0 else 0
 peak_vram_mb = torch.cuda.max_memory_allocated() / 1024 / 1024
 
