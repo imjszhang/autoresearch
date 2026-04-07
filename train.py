@@ -465,6 +465,7 @@ ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
 WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
 WARMDOWN_RATIO = 0.5    # fraction of time budget for LR warmdown
 FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
+GRAD_CLIP_NORM = 1.0    # global L2 norm clip before optimizer step (0 to disable)
 
 # Model size
 DEPTH = 8               # number of transformer layers
@@ -570,6 +571,9 @@ while True:
         loss = loss / grad_accum_steps
         loss.backward()
         x, y, epoch = next(train_loader)
+
+    if GRAD_CLIP_NORM > 0:
+        torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
 
     # Progress and schedules
     progress = min(total_training_time / TIME_BUDGET, 1.0)
