@@ -30,7 +30,7 @@ else:
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
-ROPE_BASE = 53500  # BREAK: interpolate between 52k (best) and 60k (discard) on val_bpb
+ROPE_BASE = 53500
 
 # ---------------------------------------------------------------------------
 # GPT Model
@@ -445,31 +445,23 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-# ---------------------------------------------------------------------------
-# Hyperparameters (edit these directly, no CLI flags needed)
-# ---------------------------------------------------------------------------
-
-# Model architecture
-ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
-HEAD_DIM = 128          # target head dimension for attention
-WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
-
-# Optimization
-TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
-EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
-UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
-MATRIX_LR = 0.045       # learning rate for matrix parameters (Muon)
-SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
-WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
-ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
-WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
-WARMDOWN_RATIO = 0.5    # fraction of time budget for LR warmdown
-FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
-GRAD_CLIP_NORM = 1.0    # global L2 norm clip before optimizer step (0 to disable)
-
-# Model size
-DEPTH = 8               # number of transformer layers
-DEVICE_BATCH_SIZE = 64  # per-device batch size (reduce if OOM)
+# Hyperparameters (edit here; no CLI)
+ASPECT_RATIO = 64
+HEAD_DIM = 128
+WINDOW_PATTERN = "SSSL"
+TOTAL_BATCH_SIZE = 2**19
+EMBEDDING_LR = 0.6
+UNEMBEDDING_LR = 0.004
+MATRIX_LR = 0.045
+SCALAR_LR = 0.5
+WEIGHT_DECAY = 0.2
+ADAM_BETAS = (0.8, 0.95)
+WARMUP_RATIO = 0.0
+WARMDOWN_RATIO = 0.5
+FINAL_LR_FRAC = 0.0
+GRAD_CLIP_NORM = 1.0
+DEPTH = 8
+DEVICE_BATCH_SIZE = 64
 
 # ---------------------------------------------------------------------------
 # Setup: tokenizer, model, optimizer, dataloader
