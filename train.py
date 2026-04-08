@@ -32,10 +32,7 @@ from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evalua
 
 ROPE_BASE = 53500
 
-# ---------------------------------------------------------------------------
-# GPT Model
-# ---------------------------------------------------------------------------
-
+# --- GPT model ---
 @dataclass
 class GPTConfig:
     sequence_len: int = 2048
@@ -310,10 +307,7 @@ class GPT(nn.Module):
             return loss
         return logits
 
-# ---------------------------------------------------------------------------
-# Optimizer (MuonAdamW, single GPU only)
-# ---------------------------------------------------------------------------
-
+# --- Optimizer (MuonAdamW, single GPU) ---
 polar_express_coeffs = [
     (8.156554524902461, -22.48329292557795, 15.878769915207462),
     (4.042929935166739, -2.808917465908714, 0.5000178451051316),
@@ -463,10 +457,7 @@ GRAD_CLIP_NORM = 1.08
 DEPTH = 8
 DEVICE_BATCH_SIZE = 64
 
-# ---------------------------------------------------------------------------
-# Setup: tokenizer, model, optimizer, dataloader
-# ---------------------------------------------------------------------------
-
+# --- Setup (tokenizer, model, optimizer, dataloader) ---
 t_start = time.time()
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
@@ -498,9 +489,7 @@ model.to_empty(device=device)
 model.init_weights()
 
 param_counts = model.num_scaling_params()
-print("Parameter counts:")
-for key, value in param_counts.items():
-    print(f"  {key:24s}: {value:,}")
+print("Parameter counts:", ", ".join(f"{k}={v:,}" for k, v in param_counts.items()))
 num_params = param_counts['total']
 num_flops_per_token = model.estimate_flops()
 print(f"Estimated FLOPs per token: {num_flops_per_token:e}")
@@ -545,10 +534,7 @@ def get_weight_decay(progress):
     # Square-root schedule: stronger mid-training WD than linear (1-p); endpoints unchanged.
     return WEIGHT_DECAY * math.sqrt(max(0.0, 1.0 - progress))
 
-# ---------------------------------------------------------------------------
-# Training loop
-# ---------------------------------------------------------------------------
-
+# --- Training loop ---
 t_start_training = time.time()
 smooth_train_loss = 0
 total_training_time = 0
