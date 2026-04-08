@@ -30,7 +30,7 @@ else:
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
-ROPE_BASE = 50000  # rotary inverse-frequency base (slower long-context rotation than 10k)
+ROPE_BASE = 52000  # rotary inverse-frequency base (slower long-context rotation than 10k)
 
 # ---------------------------------------------------------------------------
 # GPT Model
