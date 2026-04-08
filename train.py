@@ -597,7 +597,7 @@ while True:
 
     torch.cuda.synchronize()
     t1 = time.time()
-    dt = t1 - t0
+    dt = max(t1 - t0, 1e-3)
 
     if step > 10:
         total_training_time += dt
