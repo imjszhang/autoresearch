@@ -542,7 +542,8 @@ def get_muon_momentum(step):
     return (1 - frac) * 0.85 + frac * 0.95
 
 def get_weight_decay(progress):
-    return WEIGHT_DECAY * (1 - progress)
+    # Square-root schedule: stronger mid-training WD than linear (1-p); endpoints unchanged.
+    return WEIGHT_DECAY * math.sqrt(max(0.0, 1.0 - progress))
 
 # ---------------------------------------------------------------------------
 # Training loop
