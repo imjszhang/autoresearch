@@ -501,7 +501,7 @@ def build_model_config(depth):
         sequence_len=MAX_SEQ_LEN, vocab_size=vocab_size,
         n_layer=depth, n_head=num_heads, n_kv_head=n_kv_head, n_embd=model_dim,
         window_pattern=WINDOW_PATTERN,
-        rope_theta=503_000.0,  # 502k beat 500k; +1k nudge from best line
+        rope_theta=502_500.0,  # 503k best 1.110106; 504k worse; try midpoint 502.5k
     )
 
 config = build_model_config(DEPTH)
