@@ -117,13 +117,15 @@ class CausalSelfAttention(nn.Module):
 class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd, bias=False)
-        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias=False)
+        # SwiGLU FFN (LLaMA-style), ~same param budget as 4*d ReLU^2 MLP
+        h = int(8 * config.n_embd / 3)
+        self.hidden_dim = ((h + 127) // 128) * 128
+        self.c_fc1 = nn.Linear(config.n_embd, self.hidden_dim, bias=False)
+        self.c_fc2 = nn.Linear(config.n_embd, self.hidden_dim, bias=False)
+        self.c_proj = nn.Linear(self.hidden_dim, config.n_embd, bias=False)
 
     def forward(self, x):
-        x = self.c_fc(x)
-        x = F.relu(x).square()
-        x = self.c_proj(x)
+        x = self.c_proj(F.silu(self.c_fc1(x)) * self.c_fc2(x))
         return x
 
 
@@ -177,7 +179,8 @@ class GPT(nn.Module):
             torch.nn.init.uniform_(block.attn.c_k.weight, -s, s)
             torch.nn.init.uniform_(block.attn.c_v.weight, -s, s)
             torch.nn.init.zeros_(block.attn.c_proj.weight)
-            torch.nn.init.uniform_(block.mlp.c_fc.weight, -s, s)
+            torch.nn.init.uniform_(block.mlp.c_fc1.weight, -s, s)
+            torch.nn.init.uniform_(block.mlp.c_fc2.weight, -s, s)
             torch.nn.init.zeros_(block.mlp.c_proj.weight)
         # Per-layer scalars
         self.resid_lambdas.fill_(1.0)
