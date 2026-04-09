@@ -566,7 +566,7 @@ step = 0
 
 while True:
     torch.cuda.synchronize()
-    t0 = time.time()
+    t0 = time.perf_counter()
     for micro_step in range(grad_accum_steps):
         with autocast_ctx:
             loss = model(x, y)
@@ -575,8 +575,8 @@ while True:
         loss.backward()
         x, y, epoch = next(train_loader)
 
-    # Progress and schedules
-    progress = min(total_training_time / TIME_BUDGET, 1.0)
+    # Progress and schedules (clamp lower bound: wall clock can go backward on some hosts)
+    progress = max(0.0, min(total_training_time / TIME_BUDGET, 1.0))
     lrm = get_lr_multiplier(progress)
     muon_momentum = get_muon_momentum(step)
     muon_weight_decay = get_weight_decay(progress)
@@ -596,8 +596,8 @@ while True:
         exit(1)
 
     torch.cuda.synchronize()
-    t1 = time.time()
-    dt = t1 - t0
+    t1 = time.perf_counter()
+    dt = max(t1 - t0, 1e-9)
 
     if step > 10:
         total_training_time += dt
@@ -606,7 +606,7 @@ while True:
     ema_beta = 0.9
     smooth_train_loss = ema_beta * smooth_train_loss + (1 - ema_beta) * train_loss_f
     debiased_smooth_loss = smooth_train_loss / (1 - ema_beta**(step + 1))
-    pct_done = 100 * progress
+    pct_done = 100 * max(0.0, min(total_training_time / TIME_BUDGET, 1.0))
     tok_per_sec = int(TOTAL_BATCH_SIZE / dt)
     mfu = 100 * num_flops_per_token * TOTAL_BATCH_SIZE / dt / H100_BF16_PEAK_FLOPS
     remaining = max(0, TIME_BUDGET - total_training_time)
