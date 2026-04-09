@@ -463,7 +463,7 @@ KV_HEAD_GROUP = 2     # GQA: n_kv_head = n_head // this (must divide evenly)
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
 UNEMBEDDING_LR = 0.0052 # lm_head Adam LR; 0.005 prior best line, slight bump
-MATRIX_LR = 0.046       # learning rate for matrix parameters (Muon); 0.045 best line, slight bump
+MATRIX_LR = 0.047       # learning rate for matrix parameters (Muon); 0.046 keep 1.110539, slight bump
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
 ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
