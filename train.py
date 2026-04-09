@@ -451,6 +451,7 @@ class MuonAdamW(torch.optim.Optimizer):
 ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
 HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
+KV_HEAD_GROUP = 2     # GQA: n_kv_head = n_head // this (must divide evenly)
 
 # Optimization
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
@@ -488,9 +489,11 @@ def build_model_config(depth):
     base_dim = depth * ASPECT_RATIO
     model_dim = ((base_dim + HEAD_DIM - 1) // HEAD_DIM) * HEAD_DIM
     num_heads = model_dim // HEAD_DIM
+    assert num_heads % KV_HEAD_GROUP == 0, "n_head must divide by KV_HEAD_GROUP"
+    n_kv_head = num_heads // KV_HEAD_GROUP
     return GPTConfig(
         sequence_len=MAX_SEQ_LEN, vocab_size=vocab_size,
-        n_layer=depth, n_head=num_heads, n_kv_head=num_heads, n_embd=model_dim,
+        n_layer=depth, n_head=num_heads, n_kv_head=n_kv_head, n_embd=model_dim,
         window_pattern=WINDOW_PATTERN,
     )
 
