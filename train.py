@@ -12,6 +12,7 @@ import gc
 import math
 import time
 from dataclasses import dataclass, asdict
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -480,6 +481,7 @@ DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
 # ---------------------------------------------------------------------------
 
 t_start = time.time()
+Path(".train_done").unlink(missing_ok=True)
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
 torch.set_float32_matmul_precision("high")
@@ -656,3 +658,4 @@ print(f"total_tokens_M:   {total_tokens / 1e6:.1f}")
 print(f"num_steps:        {step}")
 print(f"num_params_M:     {num_params / 1e6:.1f}")
 print(f"depth:            {DEPTH}")
+Path(".train_done").write_text(f"{val_bpb:.6f}\t{peak_vram_mb:.1f}\n")
