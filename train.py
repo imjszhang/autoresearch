@@ -316,7 +316,7 @@ class GPT(nn.Module):
             x = block(x, ve, cos_sin, self.window_sizes[i])
         x = norm(x)
 
-        softcap = 10.95  # interpolate between 11 (keep) and 10.9 (discard in log)
+        softcap = 10.93  # nudge tighter from 10.95 (best 1.107378 on RTX)
         logits = self.lm_head(x)
         logits = logits.float()
         logits = softcap * torch.tanh(logits / softcap)
