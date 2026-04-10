@@ -503,9 +503,7 @@ model.to_empty(device=device)
 model.init_weights()
 
 param_counts = model.num_scaling_params()
-print("Parameter counts:")
-for key, value in param_counts.items():
-    print(f"  {key:24s}: {value:,}")
+print("Parameter counts:", {k: f"{v:,}" for k, v in param_counts.items()})
 num_params = param_counts['total']
 num_flops_per_token = model.estimate_flops()
 print(f"Estimated FLOPs per token: {num_flops_per_token:e}")
