@@ -521,8 +521,6 @@ optimizer = model.setup_optimizer(
     weight_decay=WEIGHT_DECAY,
 )
 
-# model = torch.compile(model, dynamic=False)  # disabled for initial validation
-
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
 x, y, epoch = next(train_loader)  # prefetch first batch
 
@@ -551,14 +549,14 @@ def get_weight_decay(progress):
 # Training loop
 # ---------------------------------------------------------------------------
 
-t_start_training = time.time()
+t_start_training = time.perf_counter()
 smooth_train_loss = 0
 total_training_time = 0
 step = 0
 
 while True:
     torch.cuda.synchronize()
-    t0 = time.time()
+    t0 = time.perf_counter()
     for micro_step in range(grad_accum_steps):
         with autocast_ctx:
             loss = model(x, y)
@@ -588,7 +586,7 @@ while True:
         exit(1)
 
     torch.cuda.synchronize()
-    t1 = time.time()
+    t1 = time.perf_counter()
     dt = t1 - t0
 
     if step > 10:
