@@ -571,7 +571,7 @@ def get_lr_multiplier(progress):
         return cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC
 
 def get_muon_momentum(step):
-    frac = min(step / 300, 1)
+    frac = min(step / 280, 1)  # faster ramp: ~59 steps/run on this GPU; /290 worse in log, try /280
     return (1 - frac) * 0.85 + frac * 0.95
 
 def get_weight_decay(progress):
