@@ -108,16 +108,19 @@ class CausalSelfAttention(nn.Module):
 
 
 class MLP(nn.Module):
+    """SwiGLU FFN (gated): hidden 3*n_embd so param count stays close to old 4x SiLU block."""
+
     def __init__(self, config):
         super().__init__()
-        self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd, bias=False)
-        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias=False)
+        n = config.n_embd
+        hidden = 3 * n
+        self.c_fc = nn.Linear(n, 2 * hidden, bias=False)
+        self.c_proj = nn.Linear(hidden, n, bias=False)
 
     def forward(self, x):
-        x = self.c_fc(x)
-        x = F.silu(x)
-        x = self.c_proj(x)
-        return x
+        gate, up = self.c_fc(x).chunk(2, dim=-1)
+        x = F.silu(gate) * up
+        return self.c_proj(x)
 
 
 class Block(nn.Module):
