@@ -353,17 +353,12 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
 class MuonAdamW(torch.optim.Optimizer):
     def __init__(self, param_groups):
         super().__init__(param_groups, defaults={})
-        # 0-D CPU tensors to avoid torch.compile recompilation when values change
-        self._adamw_step_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._adamw_lr_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._adamw_beta1_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._adamw_beta2_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._adamw_eps_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._adamw_wd_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._muon_momentum_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._muon_lr_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._muon_wd_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
-        self._muon_beta2_t = torch.tensor(0.0, dtype=torch.float32, device="cpu")
+        for name in (
+            "_adamw_step_t", "_adamw_lr_t", "_adamw_beta1_t", "_adamw_beta2_t",
+            "_adamw_eps_t", "_adamw_wd_t", "_muon_momentum_t", "_muon_lr_t",
+            "_muon_wd_t", "_muon_beta2_t",
+        ):
+            setattr(self, name, torch.tensor(0.0, dtype=torch.float32, device="cpu"))
 
     def _step_adamw(self, group):
         for p in group['params']:
@@ -517,8 +512,6 @@ while True:
     model.zero_grad(set_to_none=True)
 
     train_loss_f = train_loss.item()
-
-    # Fast fail: abort if loss is exploding or NaN
     if math.isnan(train_loss_f) or train_loss_f > 100:
         print("FAIL")
         exit(1)
@@ -529,8 +522,6 @@ while True:
 
     if step > 10:
         total_training_time += dt
-
-    # Logging
     ema_beta = 0.9
     smooth_train_loss = ema_beta * smooth_train_loss + (1 - ema_beta) * train_loss_f
     debiased_smooth_loss = smooth_train_loss / (1 - ema_beta**(step + 1))
@@ -540,8 +531,6 @@ while True:
     remaining = max(0, TIME_BUDGET - total_training_time)
 
     print(f"\rstep {step:05d} ({pct_done:.1f}%) | loss: {debiased_smooth_loss:.6f} | lrm: {lrm:.2f} | dt: {dt*1000:.0f}ms | tok/sec: {tok_per_sec:,} | mfu: {mfu:.1f}% | epoch: {epoch} | remaining: {remaining:.0f}s    ", end="", flush=True)
-
-    # GC management (Python's GC causes ~500ms stalls)
     if step == 0:
         gc.collect()
         gc.freeze()
@@ -550,21 +539,14 @@ while True:
         gc.collect()
 
     step += 1
-
-    # Time's up — but only stop after warmup steps so we don't count compilation
     if step > 10 and total_training_time >= TIME_BUDGET:
         break
 
-print()  # newline after \r training log
-
+print()
 total_tokens = step * TOTAL_BATCH_SIZE
-
-# Final eval
 model.eval()
 with autocast_ctx:
     val_bpb = evaluate_bpb(model, tokenizer, DEVICE_BATCH_SIZE)
-
-# Final summary
 t_end = time.time()
 steady_state_mfu = 100 * num_flops_per_token * TOTAL_BATCH_SIZE * (step - 10) / total_training_time / H100_BF16_PEAK_FLOPS if total_training_time > 0 else 0
 peak_vram_mb = torch.cuda.max_memory_allocated() / 1024 / 1024
