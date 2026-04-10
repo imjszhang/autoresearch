@@ -474,7 +474,7 @@ class MuonAdamW(torch.optim.Optimizer):
 ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
 HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
-KV_HEAD_GROUP = 2     # GQA: n_kv_head = n_head // this (must divide evenly)
+KV_HEAD_GROUP = 1     # MHA (n_kv_head=n_head); GQA=2 was keep line, try full attention
 
 # Optimization
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
