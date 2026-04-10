@@ -8,6 +8,14 @@ import os
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
+import sys
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+
 import gc
 import math
 import time
@@ -25,9 +33,9 @@ if cap == (9, 0):
     from kernels import get_kernel
     fa3 = get_kernel('varunneal/flash-attention-3').flash_attn_interface
     _use_fa3 = True
-    print('Using Flash Attention 3 (Hopper)')
+    print('Using Flash Attention 3 (Hopper)', flush=True)
 else:
-    print(f'GPU SM {cap[0]}.{cap[1]}: using PyTorch SDPA (FA3 requires Hopper)')
+    print(f'GPU SM {cap[0]}.{cap[1]}: using PyTorch SDPA (FA3 requires Hopper)', flush=True)
 
 # SM12+ (e.g. Blackwell): Inductor/Triton ptxas can fail on compiled optimizer kernels.
 if cap[0] >= 12:
