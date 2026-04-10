@@ -29,6 +29,10 @@ if cap == (9, 0):
 else:
     print(f'GPU SM {cap[0]}.{cap[1]}: using PyTorch SDPA (FA3 requires Hopper)')
 
+# SM12+ (e.g. Blackwell): Inductor/Triton ptxas can fail on compiled optimizer kernels.
+if cap[0] >= 12:
+    os.environ["TORCH_COMPILE_DISABLE"] = "1"
+
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
 # ---------------------------------------------------------------------------
