@@ -1,8 +1,4 @@
-"""
-Autoresearch pretraining script. Single-GPU, single-file.
-Cherry-picked and simplified from nanochat.
-Usage: uv run train.py
-"""
+"""Single-GPU pretraining (nanochat-derived). Run: uv run train.py"""
 
 import os
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
@@ -30,9 +26,7 @@ else:
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
-# ---------------------------------------------------------------------------
-# GPT Model
-# ---------------------------------------------------------------------------
+# --- GPT ---
 
 @dataclass
 class GPTConfig:
@@ -50,8 +44,7 @@ def norm(x):
 
 
 def has_ve(layer_idx, n_layer):
-    """Returns True if layer should have Value Embedding (alternating, last always included)."""
-    return layer_idx % 2 == (n_layer - 1) % 2
+    return layer_idx % 2 == (n_layer - 1) % 2  # alternating VE; last layer always on
 
 
 def apply_rotary_emb(x, cos, sin):
@@ -308,9 +301,7 @@ class GPT(nn.Module):
             return loss
         return logits
 
-# ---------------------------------------------------------------------------
-# Optimizer (MuonAdamW, single GPU only)
-# ---------------------------------------------------------------------------
+# --- MuonAdamW (single GPU) ---
 
 polar_express_coeffs = [
     (8.156554524902461, -22.48329292557795, 15.878769915207462),
@@ -443,9 +434,7 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-# ---------------------------------------------------------------------------
-# Hyperparameters (edit these directly, no CLI flags needed)
-# ---------------------------------------------------------------------------
+# --- Hyperparameters ---
 
 # Model architecture
 ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
@@ -468,9 +457,7 @@ FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 DEPTH = 8               # number of transformer layers
 DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
 
-# ---------------------------------------------------------------------------
-# Setup: tokenizer, model, optimizer, dataloader
-# ---------------------------------------------------------------------------
+# --- Setup ---
 
 t_start = time.time()
 torch.manual_seed(42)
@@ -545,9 +532,7 @@ def get_muon_momentum(step):
 def get_weight_decay(progress):
     return WEIGHT_DECAY * (1 - progress)
 
-# ---------------------------------------------------------------------------
-# Training loop
-# ---------------------------------------------------------------------------
+# --- Training loop ---
 
 t_start_training = time.perf_counter()
 smooth_train_loss = 0
