@@ -42,7 +42,7 @@ def norm(x):
 
 
 def has_ve(layer_idx, n_layer):
-    return layer_idx % 2 == (n_layer - 1) % 2  # alternating VE; last layer always on
+    return layer_idx % 2 == (n_layer - 1) % 2
 
 
 def apply_rotary_emb(x, cos, sin):
@@ -76,7 +76,6 @@ class CausalSelfAttention(nn.Module):
         k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
         v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
 
-        # Value residual (ResFormer): mix in value embedding with input-dependent gate per head
         if ve is not None:
             ve = ve.view(B, T, self.n_kv_head, self.head_dim)
             gate = 2 * torch.sigmoid(self.ve_gate(x[..., :self.ve_gate_channels]))
@@ -89,11 +88,9 @@ class CausalSelfAttention(nn.Module):
         if _use_fa3:
             y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
         else:
-            # PyTorch SDPA: expects (B, H, T, D)
             q_sdpa = q.transpose(1, 2)
             k_sdpa = k.transpose(1, 2)
             v_sdpa = v.transpose(1, 2)
-            # Expand KV heads for GQA
             if self.n_kv_head < self.n_head:
                 rep = self.n_head // self.n_kv_head
                 k_sdpa = k_sdpa.repeat_interleave(rep, dim=1)
@@ -106,8 +103,6 @@ class CausalSelfAttention(nn.Module):
 
 
 class MLP(nn.Module):
-    """SwiGLU FFN (gated): hidden 3*n_embd so param count stays close to old 4x SiLU block."""
-
     def __init__(self, config):
         super().__init__()
         n = config.n_embd
@@ -426,25 +421,13 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
-HEAD_DIM = 128          # target head dimension for attention
-WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
-
-# Optimization
-TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
-EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
-UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
-MATRIX_LR = 0.04        # learning rate for matrix parameters (Muon)
-SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
-WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
-ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
-WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
-WARMDOWN_RATIO = 0.5    # fraction of time budget for LR warmdown
-FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
-
-# Model size
-DEPTH = 8               # number of transformer layers
-DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
+ASPECT_RATIO, HEAD_DIM = 64, 128
+WINDOW_PATTERN = "SSSL"
+TOTAL_BATCH_SIZE = 2**19
+EMBEDDING_LR, UNEMBEDDING_LR, MATRIX_LR, SCALAR_LR = 0.6, 0.004, 0.04, 0.5
+WEIGHT_DECAY, ADAM_BETAS = 0.2, (0.8, 0.95)
+WARMUP_RATIO, WARMDOWN_RATIO, FINAL_LR_FRAC = 0.0, 0.5, 0.0
+DEPTH, DEVICE_BATCH_SIZE = 8, 32
 
 t_start = time.time()
 torch.manual_seed(42)
@@ -458,17 +441,13 @@ tokenizer = Tokenizer.from_directory()
 vocab_size = tokenizer.get_vocab_size()
 print(f"Vocab size: {vocab_size:,}")
 
-def build_model_config(depth):
-    base_dim = depth * ASPECT_RATIO
-    model_dim = ((base_dim + HEAD_DIM - 1) // HEAD_DIM) * HEAD_DIM
-    num_heads = model_dim // HEAD_DIM
-    return GPTConfig(
-        sequence_len=MAX_SEQ_LEN, vocab_size=vocab_size,
-        n_layer=depth, n_head=num_heads, n_kv_head=num_heads, n_embd=model_dim,
-        window_pattern=WINDOW_PATTERN,
-    )
-
-config = build_model_config(DEPTH)
+_base = DEPTH * ASPECT_RATIO
+_model_dim = ((_base + HEAD_DIM - 1) // HEAD_DIM) * HEAD_DIM
+_heads = _model_dim // HEAD_DIM
+config = GPTConfig(
+    sequence_len=MAX_SEQ_LEN, vocab_size=vocab_size, n_layer=DEPTH,
+    n_head=_heads, n_kv_head=_heads, n_embd=_model_dim, window_pattern=WINDOW_PATTERN,
+)
 print(f"Model config: {asdict(config)}")
 
 with torch.device("meta"):
