@@ -477,7 +477,7 @@ WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 KV_HEAD_GROUP = 1     # MHA (n_kv_head=n_head); GQA=2 was keep line, try full attention
 
 # Optimization
-TOTAL_BATCH_SIZE = 589824  # 9 * 65536 vs baseline 8 * 65536 (2**19); same tokens/step shape
+TOTAL_BATCH_SIZE = 2**19  # 524288 = 8 * 65536; revert 589824 (WSL val 1.115497 worse than 2**19 line)
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
 UNEMBEDDING_LR = 0.0052 # lm_head Adam LR; 0.005 prior best line, slight bump
 MATRIX_LR = 0.0469      # Muon; 0.047 current line; try tiny down (0.048 worse in log)
