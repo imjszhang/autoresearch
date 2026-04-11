@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-_use_fa3 = False  # FA3 on Hopper (SM 9.0); else PyTorch SDPA
+_use_fa3 = False
 cap = torch.cuda.get_device_capability()
 if cap == (9, 0):
     from kernels import get_kernel
@@ -66,7 +66,7 @@ class CausalSelfAttention(nn.Module):
         self.ve_gate = nn.Linear(self.ve_gate_channels, self.n_kv_head, bias=False) if layer_idx % 2 == (config.n_layer - 1) % 2 else None
 
     def forward(self, x, ve, cos_sin, window_size):
-        B, T, C = x.size()
+        B, T = x.shape[:2]
         q = self.c_q(x).view(B, T, self.n_head, self.head_dim)
         k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
         v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
@@ -180,15 +180,11 @@ class GPT(nn.Module):
     def _compute_window_sizes(self, config):
         pattern = config.window_pattern.upper()
         assert all(c in "SL" for c in pattern)
-        long_window = config.sequence_len
-        short_window = long_window // 2
-        char_to_window = {"L": (long_window, 0), "S": (short_window, 0)}
-        window_sizes = []
-        for layer_idx in range(config.n_layer):
-            char = pattern[layer_idx % len(pattern)]
-            window_sizes.append(char_to_window[char])
-        window_sizes[-1] = (long_window, 0)
-        return window_sizes
+        Lw, Sw = config.sequence_len, config.sequence_len // 2
+        m = {"L": (Lw, 0), "S": (Sw, 0)}
+        ws = [m[pattern[i % len(pattern)]] for i in range(config.n_layer)]
+        ws[-1] = (Lw, 0)
+        return ws
 
     def estimate_flops(self):
         nparams = sum(p.numel() for p in self.parameters())
@@ -211,8 +207,7 @@ class GPT(nn.Module):
         lh = sum(p.numel() for p in self.lm_head.parameters())
         tm = sum(p.numel() for p in self.transformer.h.parameters())
         sc = self.resid_lambdas.numel() + self.x0_lambdas.numel()
-        tot = wte + ve + lh + tm + sc
-        return {'wte': wte, 'value_embeds': ve, 'lm_head': lh, 'transformer_matrices': tm, 'scalars': sc, 'total': tot}
+        return dict(wte=wte, value_embeds=ve, lm_head=lh, transformer_matrices=tm, scalars=sc, total=wte + ve + lh + tm + sc)
 
     def setup_optimizer(self, unembedding_lr=0.004, embedding_lr=0.2, matrix_lr=0.02,
                         weight_decay=0.0, adam_betas=(0.8, 0.95), scalar_lr=0.5):
@@ -225,7 +220,6 @@ class GPT(nn.Module):
         x0_params = [self.x0_lambdas]
         assert len(list(self.parameters())) == (len(matrix_params) + len(embedding_params) +
             len(lm_head_params) + len(value_embeds_params) + len(resid_params) + len(x0_params))
-        # Scale LR ∝ 1/√dmodel (tuned at 768 dim)
         dmodel_lr_scale = (model_dim / 768) ** -0.5
         param_groups = [
             dict(kind='adamw', params=lm_head_params, lr=unembedding_lr * dmodel_lr_scale, betas=adam_betas, eps=1e-10, weight_decay=0.0),
