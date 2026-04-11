@@ -83,15 +83,8 @@ class CausalSelfAttention(nn.Module):
         if _use_fa3:
             y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
         else:
-            q_sdpa = q.transpose(1, 2)
-            k_sdpa = k.transpose(1, 2)
-            v_sdpa = v.transpose(1, 2)
-            if self.n_kv_head < self.n_head:
-                rep = self.n_head // self.n_kv_head
-                k_sdpa = k_sdpa.repeat_interleave(rep, dim=1)
-                v_sdpa = v_sdpa.repeat_interleave(rep, dim=1)
-            y = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa, is_causal=True)
-            y = y.transpose(1, 2)
+            q_sdpa, k_sdpa, v_sdpa = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+            y = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa, is_causal=True).transpose(1, 2)
         y = y.contiguous().view(B, T, -1)
         y = self.c_proj(y)
         return y
@@ -135,14 +128,12 @@ class GPT(nn.Module):
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.resid_lambdas = nn.Parameter(torch.ones(config.n_layer))
         self.x0_lambdas = nn.Parameter(torch.zeros(config.n_layer))
-        # Value embeddings
         head_dim = config.n_embd // config.n_head
         kv_dim = config.n_kv_head * head_dim
         self.value_embeds = nn.ModuleDict({
             str(i): nn.Embedding(config.vocab_size, kv_dim)
             for i in range(config.n_layer) if i % 2 == (config.n_layer - 1) % 2
         })
-        # Rotary embeddings
         self.rotary_seq_len = config.sequence_len * 10
         cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
         self.register_buffer("cos", cos, persistent=False)
@@ -150,10 +141,8 @@ class GPT(nn.Module):
 
     @torch.no_grad()
     def init_weights(self):
-        # Embedding and unembedding
         torch.nn.init.normal_(self.transformer.wte.weight, mean=0.0, std=1.0)
         torch.nn.init.normal_(self.lm_head.weight, mean=0.0, std=0.001)
-        # Transformer blocks
         n_embd = self.config.n_embd
         s = 3**0.5 * n_embd**-0.5
         for block in self.transformer.h:
@@ -169,11 +158,9 @@ class GPT(nn.Module):
         self.x0_lambdas.fill_(0.1)
         for ve in self.value_embeds.values():
             torch.nn.init.uniform_(ve.weight, -s, s)
-        # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
         cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
         self.cos, self.sin = cos, sin
-        # Cast embeddings to bf16
         self.transformer.wte.to(dtype=torch.bfloat16)
         for ve in self.value_embeds.values():
             ve.to(dtype=torch.bfloat16)
@@ -395,14 +382,11 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-ASPECT_RATIO, HEAD_DIM = 64, 128
-WINDOW_PATTERN = "SSSL"
-TOTAL_BATCH_SIZE = 2**17
+ASPECT_RATIO, HEAD_DIM, WINDOW_PATTERN = 64, 128, "SSSL"
+TOTAL_BATCH_SIZE, LOGIT_SOFTCAP, DEPTH, DEVICE_BATCH_SIZE = 2**17, 15, 8, 32
 EMBEDDING_LR, UNEMBEDDING_LR, MATRIX_LR, SCALAR_LR = 0.6, 0.004, 0.04, 0.5
 WEIGHT_DECAY, ADAM_BETAS = 0.2, (0.8, 0.95)
 WARMUP_RATIO, WARMDOWN_RATIO, FINAL_LR_FRAC = 0.0, 0.35, 0.18
-LOGIT_SOFTCAP = 15
-DEPTH, DEVICE_BATCH_SIZE = 8, 32
 
 t_start = time.time()
 torch.manual_seed(42)
