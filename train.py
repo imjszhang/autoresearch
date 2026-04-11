@@ -225,15 +225,12 @@ class GPT(nn.Module):
 
     def num_scaling_params(self):
         wte = sum(p.numel() for p in self.transformer.wte.parameters())
-        value_embeds = sum(p.numel() for p in self.value_embeds.parameters())
-        lm_head = sum(p.numel() for p in self.lm_head.parameters())
-        transformer_matrices = sum(p.numel() for p in self.transformer.h.parameters())
-        scalars = self.resid_lambdas.numel() + self.x0_lambdas.numel()
-        total = wte + value_embeds + lm_head + transformer_matrices + scalars
-        return {
-            'wte': wte, 'value_embeds': value_embeds, 'lm_head': lm_head,
-            'transformer_matrices': transformer_matrices, 'scalars': scalars, 'total': total,
-        }
+        ve = sum(p.numel() for p in self.value_embeds.parameters())
+        lh = sum(p.numel() for p in self.lm_head.parameters())
+        tm = sum(p.numel() for p in self.transformer.h.parameters())
+        sc = self.resid_lambdas.numel() + self.x0_lambdas.numel()
+        tot = wte + ve + lh + tm + sc
+        return {'wte': wte, 'value_embeds': ve, 'lm_head': lh, 'transformer_matrices': tm, 'scalars': sc, 'total': tot}
 
     def setup_optimizer(self, unembedding_lr=0.004, embedding_lr=0.2, matrix_lr=0.02,
                         weight_decay=0.0, adam_betas=(0.8, 0.95), scalar_lr=0.5):
@@ -280,10 +277,8 @@ class GPT(nn.Module):
             x = block(x, ve, cos_sin, self.window_sizes[i])
         x = norm(x)
 
-        softcap = 15
-        logits = self.lm_head(x)
-        logits = logits.float()
-        logits = softcap * torch.tanh(logits / softcap)
+        c = LOGIT_SOFTCAP
+        logits = c * torch.tanh(self.lm_head(x).float() / c)
 
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1),
@@ -292,12 +287,9 @@ class GPT(nn.Module):
         return logits
 
 polar_express_coeffs = (
-    (8.156554524902461, -22.48329292557795, 15.878769915207462),
-    (4.042929935166739, -2.808917465908714, 0.5000178451051316),
-    (3.8916678022926607, -2.772484153217685, 0.5060648178503393),
-    (3.285753657755655, -2.3681294933425376, 0.46449024233003106),
-    (2.3465413258596377, -1.7097828382687081, 0.42323551169305323),
-)
+    (8.156554524902461, -22.48329292557795, 15.878769915207462), (4.042929935166739, -2.808917465908714, 0.5000178451051316),
+    (3.8916678022926607, -2.772484153217685, 0.5060648178503393), (3.285753657755655, -2.3681294933425376, 0.46449024233003106),
+    (2.3465413258596377, -1.7097828382687081, 0.42323551169305323))
 
 @torch.compile(dynamic=False, fullgraph=True)
 def adamw_step_fused(p, grad, exp_avg, exp_avg_sq, step_t, lr_t, beta1_t, beta2_t, eps_t, wd_t):
@@ -313,11 +305,9 @@ def adamw_step_fused(p, grad, exp_avg, exp_avg_sq, step_t, lr_t, beta1_t, beta2_
 @torch.compile(dynamic=False, fullgraph=True)
 def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momentum_buffer,
                     momentum_t, lr_t, wd_t, beta2_t, ns_steps, red_dim):
-    # Nesterov momentum
     momentum = momentum_t.to(stacked_grads.dtype)
     momentum_buffer.lerp_(stacked_grads, 1 - momentum)
     g = stacked_grads.lerp_(momentum_buffer, momentum)
-    # Polar express orthogonalization
     X = g.bfloat16()
     X = X / (X.norm(dim=(-2, -1), keepdim=True) * 1.02 + 1e-6)
     if g.size(-2) > g.size(-1):
@@ -331,7 +321,6 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
             B = b * A + c * (A @ A)
             X = a * X + B @ X
     g = X
-    # NorMuon variance reduction
     beta2 = beta2_t.to(g.dtype)
     v_mean = g.float().square().mean(dim=red_dim, keepdim=True)
     red_dim_size = g.size(red_dim)
@@ -343,7 +332,6 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
     v_norm_new = scaled_sq_sum.sum(dim=(-2, -1), keepdim=True).sqrt()
     final_scale = step_size * (v_norm / v_norm_new.clamp_min(1e-10))
     g = g * final_scale.to(g.dtype)
-    # Cautious weight decay + parameter update
     lr = lr_t.to(g.dtype)
     wd = wd_t.to(g.dtype)
     mask = (g * stacked_params) >= 0
@@ -353,11 +341,8 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
 class MuonAdamW(torch.optim.Optimizer):
     def __init__(self, param_groups):
         super().__init__(param_groups, defaults={})
-        for name in (
-            "_adamw_step_t", "_adamw_lr_t", "_adamw_beta1_t", "_adamw_beta2_t",
-            "_adamw_eps_t", "_adamw_wd_t", "_muon_momentum_t", "_muon_lr_t",
-            "_muon_wd_t", "_muon_beta2_t",
-        ):
+        for name in ("_adamw_step_t", "_adamw_lr_t", "_adamw_beta1_t", "_adamw_beta2_t", "_adamw_eps_t", "_adamw_wd_t",
+                     "_muon_momentum_t", "_muon_lr_t", "_muon_wd_t", "_muon_beta2_t"):
             setattr(self, name, torch.tensor(0.0, dtype=torch.float32, device="cpu"))
 
     def _step_adamw(self, group):
@@ -421,6 +406,7 @@ TOTAL_BATCH_SIZE = 2**18
 EMBEDDING_LR, UNEMBEDDING_LR, MATRIX_LR, SCALAR_LR = 0.6, 0.004, 0.04, 0.5
 WEIGHT_DECAY, ADAM_BETAS = 0.2, (0.8, 0.95)
 WARMUP_RATIO, WARMDOWN_RATIO, FINAL_LR_FRAC = 0.0, 0.35, 0.18
+LOGIT_SOFTCAP = 15
 DEPTH, DEVICE_BATCH_SIZE = 8, 32
 
 t_start = time.time()
@@ -482,9 +468,8 @@ def training_schedules(step, progress):
     else:
         cd = (1.0 - progress) / WARMDOWN_RATIO
         lrm = cd + (1 - cd) * FINAL_LR_FRAC
-    frac = min(step / 300, 1)
-    mom = (1 - frac) * 0.85 + frac * 0.95
-    return lrm, mom, WEIGHT_DECAY * (1 - progress)
+    f = min(step / 300, 1)
+    return lrm, (1 - f) * 0.85 + f * 0.95, WEIGHT_DECAY * (1 - progress)
 
 smooth_train_loss = 0
 total_training_time = 0
