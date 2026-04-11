@@ -13,8 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Attention backend: FA3 requires Hopper (SM 9.0); fall back to PyTorch SDPA otherwise
-_use_fa3 = False
+_use_fa3 = False  # FA3 on Hopper (SM 9.0); else PyTorch SDPA
 cap = torch.cuda.get_device_capability()
 if cap == (9, 0):
     from kernels import get_kernel
@@ -41,10 +40,6 @@ def norm(x):
     return F.rms_norm(x, (x.size(-1),))
 
 
-def has_ve(layer_idx, n_layer):
-    return layer_idx % 2 == (n_layer - 1) % 2
-
-
 def apply_rotary_emb(x, cos, sin):
     assert x.ndim == 4
     d = x.shape[3] // 2
@@ -68,7 +63,7 @@ class CausalSelfAttention(nn.Module):
         self.c_v = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
         self.ve_gate_channels = 32
-        self.ve_gate = nn.Linear(self.ve_gate_channels, self.n_kv_head, bias=False) if has_ve(layer_idx, config.n_layer) else None
+        self.ve_gate = nn.Linear(self.ve_gate_channels, self.n_kv_head, bias=False) if layer_idx % 2 == (config.n_layer - 1) % 2 else None
 
     def forward(self, x, ve, cos_sin, window_size):
         B, T, C = x.size()
@@ -145,7 +140,7 @@ class GPT(nn.Module):
         kv_dim = config.n_kv_head * head_dim
         self.value_embeds = nn.ModuleDict({
             str(i): nn.Embedding(config.vocab_size, kv_dim)
-            for i in range(config.n_layer) if has_ve(i, config.n_layer)
+            for i in range(config.n_layer) if i % 2 == (config.n_layer - 1) % 2
         })
         # Rotary embeddings
         self.rotary_seq_len = config.sequence_len * 10
@@ -520,8 +515,6 @@ while True:
         gc.collect()
         gc.freeze()
         gc.disable()
-    elif (step + 1) % 5000 == 0:
-        gc.collect()
 
     step += 1
     if step > 10 and total_training_time >= TIME_BUDGET:
