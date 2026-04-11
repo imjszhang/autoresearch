@@ -4,6 +4,12 @@ import os
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
+import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(line_buffering=True)
+
 import gc
 import math
 import time
