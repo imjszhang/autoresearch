@@ -449,7 +449,7 @@ class MuonAdamW(torch.optim.Optimizer):
 ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
 HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "LLLL" # full attention all layers (BREAK: was SSSL sliding)
-ROPE_BASE = 50000.0     # BREAK: RoPE θ vs default 10k (500k run was unstable/killed)
+ROPE_BASE = 100000.0    # BREAK: push RoPE θ after 50k helped; avoid 500k instability
 
 # Optimization
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
