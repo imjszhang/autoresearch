@@ -11,7 +11,7 @@ os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 import gc
 import math
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -50,7 +50,6 @@ def norm(x):
 
 
 def has_ve(layer_idx, n_layer):
-    """Returns True if layer should have Value Embedding (alternating, last always included)."""
     return layer_idx % 2 == (n_layer - 1) % 2
 
 
@@ -85,7 +84,6 @@ class CausalSelfAttention(nn.Module):
         k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
         v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
 
-        # Value residual (ResFormer): mix in value embedding with input-dependent gate per head
         if ve is not None:
             ve = ve.view(B, T, self.n_kv_head, self.head_dim)
             gate = 2 * torch.sigmoid(self.ve_gate(x[..., :self.ve_gate_channels]))
@@ -117,7 +115,6 @@ class CausalSelfAttention(nn.Module):
 class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
-        # BREAK: 3.5x expansion vs 4x SwiGLU (slimmer FFN, fewer params)
         hidden = (7 * config.n_embd) // 2
         self.gate_proj = nn.Linear(config.n_embd, hidden, bias=False)
         self.up_proj = nn.Linear(config.n_embd, hidden, bias=False)
@@ -172,7 +169,7 @@ class GPT(nn.Module):
         # Transformer blocks
         n_embd = self.config.n_embd
         s = 3**0.5 * n_embd**-0.5
-        for block in self.transformer.h:
+        for i, block in enumerate(self.transformer.h):
             torch.nn.init.uniform_(block.attn.c_q.weight, -s, s)
             torch.nn.init.uniform_(block.attn.c_k.weight, -s, s)
             torch.nn.init.uniform_(block.attn.c_v.weight, -s, s)
@@ -180,16 +177,12 @@ class GPT(nn.Module):
             torch.nn.init.uniform_(block.mlp.gate_proj.weight, -s, s)
             torch.nn.init.uniform_(block.mlp.up_proj.weight, -s, s)
             torch.nn.init.zeros_(block.mlp.c_proj.weight)
-        # Per-layer scalars
-        self.resid_lambdas.fill_(1.0)
-        self.x0_lambdas.fill_(0.1)
-        # Value embeddings
-        for ve in self.value_embeds.values():
-            torch.nn.init.uniform_(ve.weight, -s, s)
-        # Gate weights init to zero (sigmoid(0)=0.5, scaled by 2 -> 1.0 = neutral)
-        for block in self.transformer.h:
+            if str(i) in self.value_embeds:
+                torch.nn.init.uniform_(self.value_embeds[str(i)].weight, -s, s)
             if block.attn.ve_gate is not None:
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
+        self.resid_lambdas.fill_(1.0)
+        self.x0_lambdas.fill_(0.1)
         # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
         cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=ROPE_BASE)
@@ -445,27 +438,24 @@ class MuonAdamW(torch.optim.Optimizer):
 # Hyperparameters (edit these directly, no CLI flags needed)
 # ---------------------------------------------------------------------------
 
-# Model architecture
-ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
-HEAD_DIM = 128          # target head dimension for attention
-WINDOW_PATTERN = "LLLL" # full attention all layers (BREAK: was SSSL sliding)
-ROPE_BASE = 106000.0    # BREAK: nudge above 105k after 102500 discard; seek sharper long-context decay
+ASPECT_RATIO = 64
+HEAD_DIM = 128
+WINDOW_PATTERN = "LLLL"
+ROPE_BASE = 106000.0
 
-# Optimization
-TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
-EMBEDDING_LR = 0.63    # learning rate for token embeddings (Adam); GUARD +5% vs 0.6
-UNEMBEDDING_LR = 0.0042  # learning rate for lm_head (Adam); GUARD +5% vs 0.004
-MATRIX_LR = 0.0535      # BREAK: δ>θ_break; +2.9% Muon LR on top of 0.0520 baseline
-SCALAR_LR = 0.525       # learning rate for per-layer scalars (Adam); GUARD +5% vs 0.5
-WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
-ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
-WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
-WARMDOWN_RATIO = 0.40   # BREAK: was 0.5 — longer plateau before cosine tail
-FINAL_LR_FRAC = 0.12    # BREAK: raise cosine tail floor 0.08→0.12 for late-step signal
+TOTAL_BATCH_SIZE = 2**19
+EMBEDDING_LR = 0.63
+UNEMBEDDING_LR = 0.0042
+MATRIX_LR = 0.0535
+SCALAR_LR = 0.525
+WEIGHT_DECAY = 0.2
+ADAM_BETAS = (0.8, 0.95)
+WARMUP_RATIO = 0.0
+WARMDOWN_RATIO = 0.40
+FINAL_LR_FRAC = 0.12
 
-# Model size
-DEPTH = 8               # number of transformer layers
-DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
+DEPTH = 8
+DEVICE_BATCH_SIZE = 32
 
 # ---------------------------------------------------------------------------
 # Setup: tokenizer, model, optimizer, dataloader
@@ -494,7 +484,7 @@ def build_model_config(depth):
     )
 
 config = build_model_config(DEPTH)
-print(f"Model config: {asdict(config)}")
+print(f"Model config: {config}")
 
 with torch.device("meta"):
     model = GPT(config)
@@ -521,8 +511,6 @@ optimizer = model.setup_optimizer(
     matrix_lr=MATRIX_LR,
     weight_decay=WEIGHT_DECAY,
 )
-
-# model = torch.compile(model, dynamic=False)  # disabled for initial validation
 
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
 x, y, epoch = next(train_loader)  # prefetch first batch
