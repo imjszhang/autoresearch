@@ -159,7 +159,7 @@ class GPT(nn.Module):
         })
         # Rotary embeddings
         self.rotary_seq_len = config.sequence_len * 10
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=ROPE_BASE)
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
 
@@ -191,7 +191,7 @@ class GPT(nn.Module):
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
         # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=ROPE_BASE)
         self.cos, self.sin = cos, sin
         # Cast embeddings to bf16
         self.transformer.wte.to(dtype=torch.bfloat16)
@@ -448,6 +448,7 @@ class MuonAdamW(torch.optim.Optimizer):
 ASPECT_RATIO = 64       # model_dim = depth * ASPECT_RATIO
 HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "LLLL" # full attention all layers (BREAK: was SSSL sliding)
+ROPE_BASE = 50000.0     # BREAK: RoPE θ vs default 10k (500k run was unstable/killed)
 
 # Optimization
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
