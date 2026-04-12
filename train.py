@@ -30,10 +30,6 @@ else:
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
-# ---------------------------------------------------------------------------
-# GPT Model
-# ---------------------------------------------------------------------------
-
 @dataclass
 class GPTConfig:
     sequence_len: int = 2048
@@ -299,10 +295,6 @@ class GPT(nn.Module):
             return loss
         return logits
 
-# ---------------------------------------------------------------------------
-# Optimizer (MuonAdamW, single GPU only)
-# ---------------------------------------------------------------------------
-
 polar_express_coeffs = [
     (8.156554524902461, -22.48329292557795, 15.878769915207462),
     (4.042929935166739, -2.808917465908714, 0.5000178451051316),
@@ -434,10 +426,6 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-# ---------------------------------------------------------------------------
-# Hyperparameters (edit these directly, no CLI flags needed)
-# ---------------------------------------------------------------------------
-
 ASPECT_RATIO = 64
 HEAD_DIM = 128
 WINDOW_PATTERN = "LLLL"
@@ -456,10 +444,6 @@ FINAL_LR_FRAC = 0.12
 
 DEPTH = 8
 DEVICE_BATCH_SIZE = 32
-
-# ---------------------------------------------------------------------------
-# Setup: tokenizer, model, optimizer, dataloader
-# ---------------------------------------------------------------------------
 
 t_start = time.time()
 torch.manual_seed(42)
@@ -535,10 +519,6 @@ def get_muon_momentum(step):
 
 def get_weight_decay(progress):
     return WEIGHT_DECAY * (1 - progress)
-
-# ---------------------------------------------------------------------------
-# Training loop
-# ---------------------------------------------------------------------------
 
 t_start_training = time.time()
 smooth_train_loss = 0
