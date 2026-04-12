@@ -501,7 +501,7 @@ def get_lr_multiplier(progress):
         return 1.0
     else:
         cooldown = (1.0 - progress) / WARMDOWN_RATIO
-        return cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC
+        return cooldown + (1 - cooldown) * FINAL_LR_FRAC
 
 smooth_train_loss = 0
 total_training_time = 0
