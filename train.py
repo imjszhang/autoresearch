@@ -418,7 +418,7 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-ASPECT_RATIO = 73
+ASPECT_RATIO = 85
 HEAD_DIM = 128
 WINDOW_PATTERN = "SSSS"
 ROPE_BASE = 106000.0
@@ -434,7 +434,7 @@ WARMUP_RATIO = 0.0
 WARMDOWN_RATIO = 0.42
 FINAL_LR_FRAC = 0.12
 
-DEPTH = 7
+DEPTH = 6
 DEVICE_BATCH_SIZE = 32
 
 t_start = time.time()
