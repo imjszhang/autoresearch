@@ -92,17 +92,9 @@ class CausalSelfAttention(nn.Module):
         if _use_fa3:
             y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
         else:
-            # PyTorch SDPA: expects (B, H, T, D)
-            q_sdpa = q.transpose(1, 2)
-            k_sdpa = k.transpose(1, 2)
-            v_sdpa = v.transpose(1, 2)
-            # Expand KV heads for GQA
-            if self.n_kv_head < self.n_head:
-                rep = self.n_head // self.n_kv_head
-                k_sdpa = k_sdpa.repeat_interleave(rep, dim=1)
-                v_sdpa = v_sdpa.repeat_interleave(rep, dim=1)
-            y = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa, is_causal=True)
-            y = y.transpose(1, 2)
+            # PyTorch SDPA (B, H, T, D); build_model_config uses n_kv_head == n_head
+            q_sdpa, k_sdpa, v_sdpa = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+            y = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa, is_causal=True).transpose(1, 2)
         y = y.contiguous().view(B, T, -1)
         y = self.c_proj(y)
         return y
@@ -476,9 +468,7 @@ model.to_empty(device=device)
 model.init_weights()
 
 param_counts = model.num_scaling_params()
-print("Parameter counts:")
-for key, value in param_counts.items():
-    print(f"  {key:24s}: {value:,}")
+print("Parameter counts:\n" + "\n".join(f"  {k:24s}: {v:,}" for k, v in param_counts.items()))
 num_params = param_counts['total']
 num_flops_per_token = model.estimate_flops()
 print(f"Estimated FLOPs per token: {num_flops_per_token:e}")
@@ -520,7 +510,6 @@ def get_muon_momentum(step):
 def get_weight_decay(progress):
     return WEIGHT_DECAY * (1 - progress)
 
-t_start_training = time.time()
 smooth_train_loss = 0
 total_training_time = 0
 step = 0
@@ -599,7 +588,6 @@ with autocast_ctx:
 
 # Final summary
 t_end = time.time()
-startup_time = t_start_training - t_start
 steady_state_mfu = 100 * num_flops_per_token * TOTAL_BATCH_SIZE * (step - 10) / total_training_time / H100_BF16_PEAK_FLOPS if total_training_time > 0 else 0
 peak_vram_mb = torch.cuda.max_memory_allocated() / 1024 / 1024
 
