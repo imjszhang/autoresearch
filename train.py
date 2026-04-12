@@ -459,7 +459,7 @@ WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
 ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
 WARMUP_RATIO = 0.0      # fraction of time budget for LR warmup
 WARMDOWN_RATIO = 0.40   # BREAK: was 0.5 — longer plateau before cosine tail
-FINAL_LR_FRAC = 0.08    # BREAK: was 0.0 — non-zero floor at end of warmdown
+FINAL_LR_FRAC = 0.12    # BREAK: raise cosine tail floor 0.08→0.12 for late-step signal
 
 # Model size
 DEPTH = 8               # number of transformer layers
