@@ -117,7 +117,8 @@ class CausalSelfAttention(nn.Module):
 class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
-        hidden = 4 * config.n_embd
+        # BREAK: 3.5x expansion vs 4x SwiGLU (slimmer FFN, fewer params)
+        hidden = (7 * config.n_embd) // 2
         self.gate_proj = nn.Linear(config.n_embd, hidden, bias=False)
         self.up_proj = nn.Linear(config.n_embd, hidden, bias=False)
         self.c_proj = nn.Linear(hidden, config.n_embd, bias=False)
