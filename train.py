@@ -455,7 +455,7 @@ WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 # Optimization
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
 EMBEDDING_LR = 0.63    # learning rate for token embeddings (Adam); GUARD +5% vs 0.6
-UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
+UNEMBEDDING_LR = 0.0042  # learning rate for lm_head (Adam); GUARD +5% vs 0.004
 MATRIX_LR = 0.044       # learning rate for matrix parameters (Muon); GUARD +10% vs baseline 0.04
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
@@ -560,7 +560,7 @@ step = 0
 
 while True:
     torch.cuda.synchronize()
-    t0 = time.time()
+    t0 = time.perf_counter()
     for micro_step in range(grad_accum_steps):
         with autocast_ctx:
             loss = model(x, y)
@@ -590,8 +590,8 @@ while True:
         exit(1)
 
     torch.cuda.synchronize()
-    t1 = time.time()
-    dt = t1 - t0
+    t1 = time.perf_counter()
+    dt = max(t1 - t0, 0.0)
 
     if step > 10:
         total_training_time += dt
