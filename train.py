@@ -523,7 +523,7 @@ optimizer = model.setup_optimizer(
     weight_decay=WEIGHT_DECAY,
 )
 
-# model = torch.compile(model, dynamic=False)  # disabled for initial validation
+model = torch.compile(model, dynamic=False)  # more steps in fixed wall-clock budget
 
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
 x, y, epoch = next(train_loader)  # prefetch first batch
