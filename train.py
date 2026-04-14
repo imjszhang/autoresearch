@@ -512,20 +512,17 @@ x, y, epoch = next(train_loader)  # prefetch first batch
 print(f"Time budget: {TIME_BUDGET}s")
 print(f"Gradient accumulation steps: {grad_accum_steps}")
 
-# Schedules (all based on progress = training_time / TIME_BUDGET)
-
-def get_lr_multiplier(progress):
+# Schedules (progress = training_time / TIME_BUDGET)
+def lr_and_muon_momentum(progress, step):
     if progress < WARMUP_RATIO:
-        return progress / WARMUP_RATIO if WARMUP_RATIO > 0 else 1.0
+        lrm = progress / WARMUP_RATIO if WARMUP_RATIO > 0 else 1.0
     elif progress < 1.0 - WARMDOWN_RATIO:
-        return 1.0
+        lrm = 1.0
     else:
-        cooldown = (1.0 - progress) / WARMDOWN_RATIO
-        return cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC
-
-def get_muon_momentum(step):
-    frac = min(step / 300, 1)
-    return (1 - frac) * 0.85 + frac * 0.95
+        c = (1.0 - progress) / WARMDOWN_RATIO
+        lrm = c + (1 - c) * FINAL_LR_FRAC
+    f = min(step / 300, 1)
+    return lrm, (1 - f) * 0.85 + f * 0.95
 
 t_start_training = time.time()
 smooth_train_loss = 0
@@ -545,8 +542,7 @@ while True:
 
     # Progress and schedules
     progress = min(total_training_time / TIME_BUDGET, 1.0)
-    lrm = get_lr_multiplier(progress)
-    muon_momentum = get_muon_momentum(step)
+    lrm, muon_momentum = lr_and_muon_momentum(progress, step)
     muon_weight_decay = WEIGHT_DECAY * (1 - progress)
     for group in optimizer.param_groups:
         group["lr"] = group["initial_lr"] * lrm
