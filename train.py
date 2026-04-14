@@ -527,9 +527,6 @@ def get_muon_momentum(step):
     frac = min(step / 300, 1)
     return (1 - frac) * 0.85 + frac * 0.95
 
-def get_weight_decay(progress):
-    return WEIGHT_DECAY * (1 - progress)
-
 t_start_training = time.time()
 smooth_train_loss = 0
 total_training_time = 0
@@ -550,7 +547,7 @@ while True:
     progress = min(total_training_time / TIME_BUDGET, 1.0)
     lrm = get_lr_multiplier(progress)
     muon_momentum = get_muon_momentum(step)
-    muon_weight_decay = get_weight_decay(progress)
+    muon_weight_decay = WEIGHT_DECAY * (1 - progress)
     for group in optimizer.param_groups:
         group["lr"] = group["initial_lr"] * lrm
         if group['kind'] == 'muon':
