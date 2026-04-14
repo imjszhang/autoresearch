@@ -455,7 +455,7 @@ WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 ROPE_BASE = 10500       # RoPE theta; gentle bump from 10k (12k was worse in prior iter)
 
 # Optimization
-TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
+TOTAL_BATCH_SIZE = 2**18 # ~262K tokens/step; ~2x optimizer steps vs 2**19 in same wall clock
 EMBEDDING_LR = 0.625    # learning rate for token embeddings (Adam); was 0.62
 UNEMBEDDING_LR = 0.0047 # learning rate for lm_head (Adam); was 0.0045
 MATRIX_LR = 0.04418     # Muon LR; micro bump after 0.04415
