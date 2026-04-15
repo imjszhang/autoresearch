@@ -560,7 +560,7 @@ step = 0
 
 while True:
     torch.cuda.synchronize()
-    t0 = time.time()
+    t0 = time.perf_counter()
     for micro_step in range(grad_accum_steps):
         with autocast_ctx:
             loss = model(x, y)
@@ -569,8 +569,8 @@ while True:
         loss.backward()
         x, y, epoch = next(train_loader)
 
-    # Progress and schedules
-    progress = min(total_training_time / TIME_BUDGET, 1.0)
+    # Progress and schedules (clamp: wall clock can misbehave around cuda sync)
+    progress = min(max(total_training_time / TIME_BUDGET, 0.0), 1.0)
     lrm = get_lr_multiplier(progress)
     muon_momentum = get_muon_momentum(step)
     muon_weight_decay = get_weight_decay(progress)
@@ -590,10 +590,10 @@ while True:
         exit(1)
 
     torch.cuda.synchronize()
-    t1 = time.time()
+    t1 = time.perf_counter()
     dt = t1 - t0
 
-    if step > 10:
+    if step > 10 and dt > 0:
         total_training_time += dt
 
     # Logging
@@ -601,11 +601,12 @@ while True:
     smooth_train_loss = ema_beta * smooth_train_loss + (1 - ema_beta) * train_loss_f
     debiased_smooth_loss = smooth_train_loss / (1 - ema_beta**(step + 1))
     pct_done = 100 * progress
-    tok_per_sec = int(TOTAL_BATCH_SIZE / dt)
-    mfu = 100 * num_flops_per_token * TOTAL_BATCH_SIZE / dt / H100_BF16_PEAK_FLOPS
+    dt_log = max(dt, 1e-9)
+    tok_per_sec = int(TOTAL_BATCH_SIZE / dt_log)
+    mfu = 100 * num_flops_per_token * TOTAL_BATCH_SIZE / dt_log / H100_BF16_PEAK_FLOPS
     remaining = max(0, TIME_BUDGET - total_training_time)
 
-    print(f"\rstep {step:05d} ({pct_done:.1f}%) | loss: {debiased_smooth_loss:.6f} | lrm: {lrm:.2f} | dt: {dt*1000:.0f}ms | tok/sec: {tok_per_sec:,} | mfu: {mfu:.1f}% | epoch: {epoch} | remaining: {remaining:.0f}s    ", end="", flush=True)
+    print(f"\rstep {step:05d} ({pct_done:.1f}%) | loss: {debiased_smooth_loss:.6f} | lrm: {lrm:.2f} | dt: {dt_log*1000:.0f}ms | tok/sec: {tok_per_sec:,} | mfu: {mfu:.1f}% | epoch: {epoch} | remaining: {remaining:.0f}s    ", end="", flush=True)
 
     # GC management (Python's GC causes ~500ms stalls)
     if step == 0:
