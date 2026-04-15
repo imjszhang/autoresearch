@@ -534,21 +534,19 @@ print(f"Gradient accumulation steps: {grad_accum_steps}")
 
 # Schedules (all based on progress = training_time / TIME_BUDGET)
 
-def get_lr_multiplier(progress):
+def training_schedules(progress, step):
+    """LR multiplier, Muon momentum, Muon weight decay for current progress/step."""
     if progress < WARMUP_RATIO:
-        return progress / WARMUP_RATIO if WARMUP_RATIO > 0 else 1.0
+        lrm = progress / WARMUP_RATIO if WARMUP_RATIO > 0 else 1.0
     elif progress < 1.0 - WARMDOWN_RATIO:
-        return 1.0
+        lrm = 1.0
     else:
         cooldown = (1.0 - progress) / WARMDOWN_RATIO
-        return cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC
-
-def get_muon_momentum(step):
+        lrm = cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC
     frac = min(step / 300, 1)
-    return (1 - frac) * 0.85 + frac * 0.95
-
-def get_weight_decay(progress):
-    return WEIGHT_DECAY * (1 - progress)
+    muon_momentum = (1 - frac) * 0.85 + frac * 0.95
+    muon_weight_decay = WEIGHT_DECAY * (1 - progress)
+    return lrm, muon_momentum, muon_weight_decay
 
 # ---------------------------------------------------------------------------
 # Training loop
@@ -572,9 +570,7 @@ while True:
 
     # Progress and schedules (clamp: wall clock can misbehave around cuda sync)
     progress = min(max(total_training_time / TIME_BUDGET, 0.0), 1.0)
-    lrm = get_lr_multiplier(progress)
-    muon_momentum = get_muon_momentum(step)
-    muon_weight_decay = get_weight_decay(progress)
+    lrm, muon_momentum, muon_weight_decay = training_schedules(progress, step)
     for group in optimizer.param_groups:
         group["lr"] = group["initial_lr"] * lrm
         if group['kind'] == 'muon':
@@ -634,7 +630,6 @@ with autocast_ctx:
 
 # Final summary
 t_end = time.time()
-startup_time = t_start_training - t_start
 steady_state_mfu = 100 * num_flops_per_token * TOTAL_BATCH_SIZE * (step - 10) / total_training_time / H100_BF16_PEAK_FLOPS if total_training_time > 0 else 0
 peak_vram_mb = torch.cuda.max_memory_allocated() / 1024 / 1024
 
