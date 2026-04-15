@@ -1,9 +1,3 @@
-"""
-Autoresearch pretraining script. Single-GPU, single-file.
-Cherry-picked and simplified from nanochat.
-Usage: uv run train.py
-"""
-
 import os
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
@@ -438,10 +432,7 @@ class MuonAdamW(torch.optim.Optimizer):
             elif group['kind'] == 'muon':
                 self._step_muon(group)
 
-# ---------------------------------------------------------------------------
-# Hyperparameters (edit these directly, no CLI flags needed)
-# ---------------------------------------------------------------------------
-
+# Hyperparameters (edit in place; no CLI)
 # Model architecture
 ASPECT_RATIO = 56       # with DEPTH=9 → 504 base → 512-dim (4 heads @128)
 HEAD_DIM = 128          # target head dimension for attention
@@ -451,7 +442,7 @@ WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
 UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
-MATRIX_LR = 0.041       # learning rate for matrix parameters (Muon); BREAK δ>θ_break compiled run
+MATRIX_LR = 0.041       # Muon LR for matrix blocks
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
 ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
@@ -463,10 +454,7 @@ FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 DEPTH = 8               # 8L stack; ASPECT_RATIO 56 -> 512-dim (same width as 9L run)
 DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
 
-# ---------------------------------------------------------------------------
-# Setup: tokenizer, model, optimizer, dataloader
-# ---------------------------------------------------------------------------
-
+# Setup
 t_start = time.time()
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
@@ -490,7 +478,6 @@ def build_model_config(depth):
     )
 
 config = build_model_config(DEPTH)
-print(f"Model config: {config!r}")
 
 with torch.device("meta"):
     model = GPT(config)
@@ -513,7 +500,7 @@ optimizer = model.setup_optimizer(
     weight_decay=WEIGHT_DECAY,
 )
 
-model = torch.compile(model, dynamic=False)  # BREAK: full-graph compile for faster steps within TIME_BUDGET
+model = torch.compile(model, dynamic=False)
 
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
 x, y, epoch = next(train_loader)  # prefetch first batch
