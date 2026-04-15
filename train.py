@@ -11,7 +11,7 @@ os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 import gc
 import math
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -50,7 +50,6 @@ def norm(x):
 
 
 def has_ve(layer_idx, n_layer):
-    """Returns True if layer should have Value Embedding (alternating, last always included)."""
     return layer_idx % 2 == (n_layer - 1) % 2
 
 
@@ -224,7 +223,6 @@ class GPT(nn.Module):
         return window_sizes
 
     def estimate_flops(self):
-        """Estimated FLOPs per token (forward + backward)."""
         nparams = sum(p.numel() for p in self.parameters())
         value_embeds_numel = sum(ve.weight.numel() for ve in self.value_embeds.values())
         nparams_exclude = (self.transformer.wte.weight.numel() + value_embeds_numel +
@@ -241,15 +239,13 @@ class GPT(nn.Module):
 
     def num_scaling_params(self):
         wte = sum(p.numel() for p in self.transformer.wte.parameters())
-        value_embeds = sum(p.numel() for p in self.value_embeds.parameters())
-        lm_head = sum(p.numel() for p in self.lm_head.parameters())
-        transformer_matrices = sum(p.numel() for p in self.transformer.h.parameters())
-        scalars = self.resid_lambdas.numel() + self.x0_lambdas.numel()
-        total = wte + value_embeds + lm_head + transformer_matrices + scalars
-        return {
-            'wte': wte, 'value_embeds': value_embeds, 'lm_head': lm_head,
-            'transformer_matrices': transformer_matrices, 'scalars': scalars, 'total': total,
-        }
+        ve = sum(p.numel() for p in self.value_embeds.parameters())
+        lm = sum(p.numel() for p in self.lm_head.parameters())
+        xf = sum(p.numel() for p in self.transformer.h.parameters())
+        sc = self.resid_lambdas.numel() + self.x0_lambdas.numel()
+        tot = wte + ve + lm + xf + sc
+        print(f"Parameter counts: wte={wte:,} ve={ve:,} lm={lm:,} xf={xf:,} sc={sc:,} total={tot:,}")
+        return tot
 
     def setup_optimizer(self, unembedding_lr=0.004, embedding_lr=0.2, matrix_lr=0.02,
                         weight_decay=0.0, adam_betas=(0.8, 0.95), scalar_lr=0.5):
@@ -373,8 +369,6 @@ def muon_step_fused(stacked_grads, stacked_params, momentum_buffer, second_momen
 
 
 class MuonAdamW(torch.optim.Optimizer):
-    """Combined optimizer: Muon for 2D matrix params, AdamW for others."""
-
     def __init__(self, param_groups):
         super().__init__(param_groups, defaults={})
         # 0-D CPU tensors to avoid torch.compile recompilation when values change
@@ -457,7 +451,7 @@ WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 TOTAL_BATCH_SIZE = 2**19 # ~524K tokens per optimizer step
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
 UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
-MATRIX_LR = 0.04        # learning rate for matrix parameters (Muon)
+MATRIX_LR = 0.041       # learning rate for matrix parameters (Muon); BREAK δ>θ_break compiled run
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
 WEIGHT_DECAY = 0.2      # cautious weight decay for Muon
 ADAM_BETAS = (0.8, 0.95) # Adam beta1, beta2
@@ -496,18 +490,14 @@ def build_model_config(depth):
     )
 
 config = build_model_config(DEPTH)
-print(f"Model config: {asdict(config)}")
+print(f"Model config: {config!r}")
 
 with torch.device("meta"):
     model = GPT(config)
 model.to_empty(device=device)
 model.init_weights()
 
-param_counts = model.num_scaling_params()
-print("Parameter counts:")
-for key, value in param_counts.items():
-    print(f"  {key:24s}: {value:,}")
-num_params = param_counts['total']
+num_params = model.num_scaling_params()
 num_flops_per_token = model.estimate_flops()
 print(f"Estimated FLOPs per token: {num_flops_per_token:e}")
 
@@ -535,7 +525,6 @@ print(f"Gradient accumulation steps: {grad_accum_steps}")
 # Schedules (all based on progress = training_time / TIME_BUDGET)
 
 def training_schedules(progress, step):
-    """LR multiplier, Muon momentum, Muon weight decay for current progress/step."""
     if progress < WARMUP_RATIO:
         lrm = progress / WARMUP_RATIO if WARMUP_RATIO > 0 else 1.0
     elif progress < 1.0 - WARMDOWN_RATIO:
@@ -552,7 +541,6 @@ def training_schedules(progress, step):
 # Training loop
 # ---------------------------------------------------------------------------
 
-t_start_training = time.time()
 smooth_train_loss = 0
 total_training_time = 0
 step = 0
