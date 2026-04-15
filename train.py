@@ -499,7 +499,6 @@ model.init_weights()
 
 num_params = model.num_scaling_params()
 num_flops_per_token = model.estimate_flops()
-print(f"Estimated FLOPs per token: {num_flops_per_token:e}")
 
 tokens_per_fwdbwd = DEVICE_BATCH_SIZE * MAX_SEQ_LEN
 assert TOTAL_BATCH_SIZE % tokens_per_fwdbwd == 0
