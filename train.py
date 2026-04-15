@@ -90,7 +90,7 @@ class CausalSelfAttention(nn.Module):
 
         cos, sin = cos_sin
         q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
-        q, k = norm(q), norm(k)
+        # BREAK: skip extra RMSNorm on Q/K after RoPE (pre-norm on x still applied in Block)
 
         if _use_fa3:
             y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
