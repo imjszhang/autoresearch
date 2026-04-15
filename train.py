@@ -465,7 +465,7 @@ WARMDOWN_RATIO = 0.5    # fraction of time budget for LR warmdown
 FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 
 # Model size
-DEPTH = 9               # deeper stack, ~same width as baseline 8×64=512
+DEPTH = 8               # 8L stack; ASPECT_RATIO 56 -> 512-dim (same width as 9L run)
 DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
 
 # ---------------------------------------------------------------------------
