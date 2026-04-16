@@ -452,7 +452,7 @@ FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 
 # Model size
 DEPTH = 8               # 8L stack; ASPECT_RATIO 56 -> 512-dim (same width as 9L run)
-DEVICE_BATCH_SIZE = 32  # per-device batch size (reduce if OOM)
+DEVICE_BATCH_SIZE = 24  # micro-batch 24 → 8 grad accum (393216 tok/step); explore noise vs 32/6
 
 # Setup
 t_start = time.time()
