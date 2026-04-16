@@ -85,9 +85,10 @@ class CausalSelfAttention(nn.Module):
             gate = 2 * torch.sigmoid(self.ve_gate(x[..., :self.ve_gate_channels]))
             v = v + gate.unsqueeze(-1) * ve
 
+        # Pre-RoPE Q/K RMSNorm (no post-RoPE norm): sharper attention vs prior post-RoPE norm only
+        q, k = norm(q), norm(k)
         cos, sin = cos_sin
         q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
-        q, k = norm(q), norm(k)
 
         if _use_fa3:
             y = fa3.flash_attn_func(q, k, v, causal=True, window_size=window_size)
