@@ -38,6 +38,7 @@ class GPTConfig:
     n_embd: int = 768
     window_pattern: str = "SSSL"
     rope_base: float = 10000.0
+    ve_gate_channels: int = 32
 
 
 def norm(x):
@@ -70,7 +71,8 @@ class CausalSelfAttention(nn.Module):
         self.c_k = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         self.c_v = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
-        self.ve_gate_channels = 32
+        self.ve_gate_channels = config.ve_gate_channels
+        assert self.ve_gate_channels <= self.n_embd
         self.ve_gate = nn.Linear(self.ve_gate_channels, self.n_kv_head, bias=False) if has_ve(layer_idx, config.n_layer) else None
 
     def forward(self, x, ve, cos_sin, window_size):
@@ -458,6 +460,7 @@ DEPTH = 8               # 8L stack; ASPECT_RATIO 56 -> 512-dim (same width as 9L
 DEVICE_BATCH_SIZE = 24  # micro-batch 24 → 8 grad accum (393216 tok/step); explore noise vs 32/6
 ROPE_BASE = 10080.0     # RoPE frequency base (default 10000); mild stretch vs 2k context
 LOGIT_SOFTCAP = 10.5    # tanh logit cap (between prior sweet 10–11 at this depth/budget)
+VE_GATE_CHANNELS = 48   # slice dim for value-embedding gates (was 32); wider routing under fixed width
 
 # Setup
 t_start = time.time()
@@ -482,6 +485,7 @@ def build_model_config(depth):
         n_layer=depth, n_head=num_heads, n_kv_head=num_heads, n_embd=model_dim,
         window_pattern=WINDOW_PATTERN,
         rope_base=ROPE_BASE,
+        ve_gate_channels=VE_GATE_CHANNELS,
     )
 
 config = build_model_config(DEPTH)
