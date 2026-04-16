@@ -434,12 +434,12 @@ class MuonAdamW(torch.optim.Optimizer):
 
 # Hyperparameters (edit in place; no CLI)
 # Model architecture
-ASPECT_RATIO = 56       # with DEPTH=9 → 504 base → 512-dim (4 heads @128)
+ASPECT_RATIO = 56       # with DEPTH=8 → 448 base → 512-dim (4 heads @128)
 HEAD_DIM = 128          # target head dimension for attention
 WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 
 # Optimization
-TOTAL_BATCH_SIZE = 458752  # 7 * (DEVICE_BATCH_SIZE * MAX_SEQ_LEN); was 2**19=8 accum steps
+TOTAL_BATCH_SIZE = 393216  # 6 * (DEVICE_BATCH_SIZE * MAX_SEQ_LEN); smaller global batch vs 458752
 EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
 UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
 MATRIX_LR = 0.042       # Muon LR for matrix blocks
