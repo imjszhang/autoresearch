@@ -440,7 +440,7 @@ WINDOW_PATTERN = "SSSL" # sliding window pattern: L=full, S=half context
 
 # Optimization
 TOTAL_BATCH_SIZE = 393216  # 6 * (DEVICE_BATCH_SIZE * MAX_SEQ_LEN); smaller global batch vs 458752
-EMBEDDING_LR = 0.6      # learning rate for token embeddings (Adam)
+EMBEDDING_LR = 0.63     # learning rate for token embeddings (Adam); was 0.6
 UNEMBEDDING_LR = 0.004  # learning rate for lm_head (Adam)
 MATRIX_LR = 0.042       # Muon LR for matrix blocks
 SCALAR_LR = 0.5         # learning rate for per-layer scalars (Adam)
