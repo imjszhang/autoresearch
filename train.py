@@ -18,9 +18,6 @@ if cap == (9, 0):
     from kernels import get_kernel
     fa3 = get_kernel('varunneal/flash-attention-3').flash_attn_interface
     _use_fa3 = True
-    print('Using Flash Attention 3 (Hopper)')
-else:
-    print(f'GPU SM {cap[0]}.{cap[1]}: using PyTorch SDPA (FA3 requires Hopper)')
 
 from prepare import MAX_SEQ_LEN, TIME_BUDGET, Tokenizer, make_dataloader, evaluate_bpb
 
@@ -244,7 +241,6 @@ class GPT(nn.Module):
         xf = sum(p.numel() for p in self.transformer.h.parameters())
         sc = self.resid_lambdas.numel() + self.x0_lambdas.numel()
         tot = wte + ve + lm + xf + sc
-        print(f"Parameter counts: wte={wte:,} ve={ve:,} lm={lm:,} xf={xf:,} sc={sc:,} total={tot:,}")
         return tot
 
     def setup_optimizer(self, unembedding_lr=0.004, embedding_lr=0.2, matrix_lr=0.02,
@@ -260,7 +256,6 @@ class GPT(nn.Module):
             len(lm_head_params) + len(value_embeds_params) + len(resid_params) + len(x0_params))
         # Scale LR ∝ 1/√dmodel (tuned at 768 dim)
         dmodel_lr_scale = (model_dim / 768) ** -0.5
-        print(f"Scaling AdamW LRs by 1/sqrt({model_dim}/768) = {dmodel_lr_scale:.6f}")
         param_groups = [
             dict(kind='adamw', params=lm_head_params, lr=unembedding_lr * dmodel_lr_scale, betas=adam_betas, eps=1e-10, weight_decay=0.0),
             dict(kind='adamw', params=embedding_params, lr=embedding_lr * dmodel_lr_scale, betas=adam_betas, eps=1e-10, weight_decay=0.0),
@@ -474,7 +469,6 @@ H100_BF16_PEAK_FLOPS = 989.5e12
 
 tokenizer = Tokenizer.from_directory()
 vocab_size = tokenizer.get_vocab_size()
-print(f"Vocab size: {vocab_size:,}")
 
 def build_model_config(depth):
     base_dim = depth * ASPECT_RATIO
@@ -515,9 +509,6 @@ model = torch.compile(model, dynamic=False)
 
 train_loader = make_dataloader(tokenizer, DEVICE_BATCH_SIZE, MAX_SEQ_LEN, "train")
 x, y, epoch = next(train_loader)  # prefetch first batch
-
-print(f"Time budget: {TIME_BUDGET}s")
-print(f"Gradient accumulation steps: {grad_accum_steps}")
 
 # Schedules (all based on progress = training_time / TIME_BUDGET)
 
