@@ -521,7 +521,7 @@ def training_schedules(progress, step):
         cooldown = (1.0 - progress) / WARMDOWN_RATIO
         lrm = cooldown * 1.0 + (1 - cooldown) * FINAL_LR_FRAC
     frac = min(step / 300, 1)
-    muon_momentum = (1 - frac) * 0.85 + frac * 0.95
+    muon_momentum = (1 - frac) * 0.852 + frac * 0.95  # iter185 BREAK initial Muon momentum 0.85->0.852
     muon_weight_decay = WEIGHT_DECAY * (1 - progress)
     return lrm, muon_momentum, muon_weight_decay
 
