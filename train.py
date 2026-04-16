@@ -37,6 +37,7 @@ class GPTConfig:
     n_kv_head: int = 6
     n_embd: int = 768
     window_pattern: str = "SSSL"
+    rope_base: float = 10000.0
 
 
 def norm(x):
@@ -153,7 +154,7 @@ class GPT(nn.Module):
         })
         # Rotary embeddings
         self.rotary_seq_len = config.sequence_len * 10
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=self.config.rope_base)
         self.register_buffer("cos", cos, persistent=False)
         self.register_buffer("sin", sin, persistent=False)
 
@@ -184,7 +185,7 @@ class GPT(nn.Module):
                 torch.nn.init.zeros_(block.attn.ve_gate.weight)
         # Rotary embeddings
         head_dim = self.config.n_embd // self.config.n_head
-        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim)
+        cos, sin = self._precompute_rotary_embeddings(self.rotary_seq_len, head_dim, base=self.config.rope_base)
         self.cos, self.sin = cos, sin
         # Cast embeddings to bf16
         self.transformer.wte.to(dtype=torch.bfloat16)
@@ -453,6 +454,7 @@ FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 # Model size
 DEPTH = 8               # 8L stack; ASPECT_RATIO 56 -> 512-dim (same width as 9L run)
 DEVICE_BATCH_SIZE = 24  # micro-batch 24 → 8 grad accum (393216 tok/step); explore noise vs 32/6
+ROPE_BASE = 10080.0     # RoPE frequency base (default 10000); mild stretch vs 2k context
 
 # Setup
 t_start = time.time()
@@ -476,6 +478,7 @@ def build_model_config(depth):
         sequence_len=MAX_SEQ_LEN, vocab_size=vocab_size,
         n_layer=depth, n_head=num_heads, n_kv_head=num_heads, n_embd=model_dim,
         window_pattern=WINDOW_PATTERN,
+        rope_base=ROPE_BASE,
     )
 
 config = build_model_config(DEPTH)
