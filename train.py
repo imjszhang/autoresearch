@@ -288,10 +288,9 @@ class GPT(nn.Module):
             x = block(x, ve, cos_sin, self.window_sizes[i])
         x = norm(x)
 
-        softcap = 11
         logits = self.lm_head(x)
         logits = logits.float()
-        logits = softcap * torch.tanh(logits / softcap)
+        logits = LOGIT_SOFTCAP * torch.tanh(logits / LOGIT_SOFTCAP)
 
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1),
@@ -455,6 +454,7 @@ FINAL_LR_FRAC = 0.0     # final LR as fraction of initial
 DEPTH = 8               # 8L stack; ASPECT_RATIO 56 -> 512-dim (same width as 9L run)
 DEVICE_BATCH_SIZE = 24  # micro-batch 24 → 8 grad accum (393216 tok/step); explore noise vs 32/6
 ROPE_BASE = 10080.0     # RoPE frequency base (default 10000); mild stretch vs 2k context
+LOGIT_SOFTCAP = 10.5    # tanh logit cap (between prior sweet 10–11 at this depth/budget)
 
 # Setup
 t_start = time.time()
