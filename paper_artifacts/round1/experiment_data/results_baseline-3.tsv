@@ -1,0 +1,202 @@
+commit	val_bpb	memory_gb	status	description
+d340c27	1.153057	22.6	keep	baseline after perf_counter timing fix (SM120 SDPA)
+69ae21c	0.000000	0.0	crash	LLLL full attention: run died ~step38 no val_bpb (likely OOM/kill)
+c4520fe	1.081812	11.4	keep	torch.compile(model); setsid+run_setsid.log (WSL job survived)
+6ea832e	1.106067	15.8	discard	DEPTH=9 n_embd=640 (80.9M params); val_bpb worse than c4520fe
+f8642e6	1.096704	22.3	discard	DEVICE_BATCH_SIZE=64; 386 steps but val_bpb worse than c4520fe
+2548ede	1.090358	11.4	discard	WARMUP_RATIO=0.05; val_bpb worse than c4520fe
+8cd8813	1.080414	11.4	keep	FINAL_LR_FRAC=0.05; best val_bpb so far
+fa2d4bc	1.080914	11.4	discard	WARMDOWN_RATIO 0.5->0.42 (more full-LR time); slightly worse val_bpb
+45d7bc9	1.080296	11.4	keep	FINAL_LR_FRAC 0.05->0.07; new best val_bpb
+57c0b7a	1.085787	11.0	discard	GQA n_kv_head half of n_head (4->2); worse than 45d7bc9
+440abeb	1.080075	11.4	keep	FINAL_LR_FRAC 0.07 to 0.075; new best val_bpb
+adb84dc	1.079947	11.4	keep	EMBEDDING_LR 0.6 to 0.62; new best val_bpb
+2a23276	1.079412	11.4	keep	MATRIX_LR 0.04 to 0.043 (Muon); new best val_bpb
+c806aca	1.077839	11.4	keep	UNEMBEDDING_LR 0.004 to 0.0045; new best val_bpb
+a044bbe	1.077564	11.4	keep	UNEMBEDDING_LR 0.0045 to 0.0047; new best val_bpb
+60d394a	1.077115	11.4	keep	MATRIX_LR 0.043 to 0.044 (WSL nohup run, log catch-up)
+8b14735	1.077447	11.4	discard	MATRIX_LR 0.044 to 0.045; worse than 60d394a
+d554352	1.077659	11.4	discard	SCALAR_LR 0.5 to 0.52; worse than 60d394a
+7426e92	1.077305	11.4	discard	WEIGHT_DECAY 0.2 to 0.19; worse than 60d394a
+be6acbe	1.076987	11.4	keep	EMBEDDING_LR 0.62 to 0.625 (wte/VE Adam); new best val_bpb
+ff5803c	1.077028	11.4	discard	EMBEDDING_LR 0.625 to 0.627 (Adam wte/VE); slightly worse than be6acbe
+c18467a	1.077082	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.00485 (lm_head Adam); worse than be6acbe
+4351475	1.077581	11.4	discard	MATRIX_LR 0.044 to 0.0435 (Muon); worse than be6acbe
+d60801b	1.077576	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.0046 (lm_head Adam); worse than be6acbe
+d8f3d62	1.077805	11.4	discard	logits softcap 15 to 16; worse than be6acbe
+0d94860	1.077188	11.4	discard	FINAL_LR_FRAC 0.075 to 0.074; worse than be6acbe
+4d5d5ad	1.077535	11.4	discard	RoPE base 10000 -> 50000; worse than be6acbe (1.076987)
+4937eb5	1.079132	11.4	discard	Adam beta1 0.8 to 0.85 (AdamW); worse than be6acbe baseline
+c9a2c1c	1.077039	11.4	discard	Muon MATRIX_LR 0.044 to 0.0442; slightly worse than be6acbe
+4a162dc	1.077294	11.4	discard	FINAL_LR_FRAC 0.075 to 0.076; worse than be6acbe
+5a697dc	1.076791	11.4	keep	Muon momentum ramp 300->200 steps; new best val_bpb
+10b59cb	1.076695	11.4	keep	Muon MATRIX_LR 0.044->0.0441 (with step/200 momentum); new best val_bpb
+f8e8797	1.076431	11.4	keep	Muon momentum ramp 200->180 steps; new best val_bpb
+05c2c72	1.076386	11.4	keep	Muon MATRIX_LR 0.0441->0.04415; new best val_bpb
+187b116	1.076317	11.4	keep	Muon MATRIX_LR 0.04415 to 0.04418; new best val_bpb
+a54c014	1.076469	11.4	discard	Muon MATRIX_LR 0.04418 to 0.04420; worse than 187b116
+343c9ea	1.076455	11.4	discard	Muon momentum ramp 180 to 160 steps; worse than 187b116
+648e5fd	1.076421	11.4	discard	Muon momentum ramp step/180 to step/175; worse than 187b116 (1.076317)
+0c3f112	1.076398	11.4	discard	Muon MATRIX_LR 0.04418 to 0.04419; worse than 187b116 (1.076317)
+862bb7a	1.076879	11.4	discard	ve_gate_channels 32 to 40; worse than 187b116 (1.076317)
+9e39272	1.076488	11.4	discard	WARMDOWN_RATIO 0.5 to 0.52; worse than 187b116 (1.076317)
+d702ab5	1.076509	11.4	discard	Muon momentum ramp step/180 to step/185; worse than 187b116 (1.076317)
+fb070a2	1.076516	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044172; worse than 187b116 (1.076317)
+6d711bd	1.076516	11.4	discard	torch.backends.cudnn.benchmark=True; same val_bpb as fb070a2 run, worse than 187b116
+e4a25c4	1.076374	11.4	discard	EMBEDDING_LR 0.625 to 0.624; worse than 187b116 (1.076317)
+92ad9aa	1.076100	11.4	keep	AdamW beta2 0.95 to 0.94; new best val_bpb
+95f5fa0	0.000000	0.0	crash	FINAL_LR_FRAC 0.075 to 0.074; run interrupted before val_bpb (log ends ~step194)
+c39a952	1.076437	11.4	discard	AdamW beta2 0.94 to 0.939; worse than 92ad9aa (1.076100)
+3b079ed	1.076785	11.4	discard	AdamW beta2 0.94 to 0.941; worse than 92ad9aa (1.076100)
+18ede65	1.076480	11.4	discard	WARMDOWN_RATIO 0.5 to 0.48; worse than 92ad9aa (1.076100)
+129b20b	1.076507	11.4	discard	Muon momentum ramp step/180 to step/182; worse than 92ad9aa (1.076100)
+f7a71ab	1.080330	11.4	discard	Muon Polar Express ns_steps 5 to 4; worse than 92ad9aa (1.076100)
+e691d0f	1.076448	11.4	discard	Muon NorMuon beta2 0.95 to 0.94; worse than 92ad9aa (1.076100)
+66570bf	1.076268	11.4	discard	Muon weight decay 0.2 to 0.21; worse than 92ad9aa (1.076100)
+8ab4c14	1.077049	11.4	discard	AdamW eps 1e-10 to 1e-9; worse than 92ad9aa (1.076100)
+b3c5aba	1.076268	11.4	discard	x0_params Adam beta2 0.95 to 0.94; worse than 92ad9aa (1.076100)
+28809ac	1.076569	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.00472; worse than 92ad9aa (1.076100)
+d430b94	1.076692	11.4	discard	Muon MATRIX_LR 0.04418 to 0.04417 (with Adam beta2 0.94); worse than 92ad9aa
+d12671b	1.076692	11.4	discard	FINAL_LR_FRAC 0.075 to 0.073 (Adam beta2 0.94); worse than 92ad9aa
+68d90bb	1.076692	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.00468; worse than 92ad9aa
+8ae8bc3	1.076907	11.4	discard	Muon momentum ramp step/180 to step/178; worse than 92ad9aa
+02d9322	1.076212	11.4	discard	AdamW beta1 0.8 to 0.795 (beta2 0.94); worse than 92ad9aa
+eb7fde2	1.076551	11.4	discard	AdamW beta1 0.8 to 0.805 (beta2 0.94); worse than 92ad9aa (1.076100)
+311a18c	1.076411	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044178; worse than 92ad9aa (1.076100)
+e5b8faf	1.076386	11.4	discard	AdamW beta1 0.8 to 0.799 (beta2 0.94); worse than 92ad9aa (1.076100)
+f54fc0e	1.076520	11.4	discard	AdamW beta1 0.8 to 0.802 (beta2 0.94); worse than 92ad9aa (1.076100)
+af8b073	1.076309	11.4	discard	FINAL_LR_FRAC 0.075 to 0.0755; worse than 92ad9aa (1.076100)
+23ad92f	1.076947	11.4	discard	AdamW beta2 0.94 to 0.938; worse than 92ad9aa (1.076100)
+3c9f0db	1.076717	11.4	discard	EMBEDDING_LR 0.625 to 0.624; worse than 92ad9aa (1.076100)
+57f778e	1.143676	11.4	discard	EMBEDDING_LR 0.625 to 0.626; much worse than 92ad9aa (possible concurrent run noise)
+abefe62	1.076762	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044182; worse than 92ad9aa (1.076100)
+230b0f4	1.076296	11.4	discard	AdamW beta2 0.94 to 0.9405; worse than 92ad9aa (1.076100)
+1a738ba	0.000000	0.0	crash	logits softcap 15 to 14; run ended ~step71 no val_bpb (process killed/interrupted)
+11181ec	1.076777	11.4	discard	enable CUDA matmul/cudnn TF32; worse than 92ad9aa (1.076100)
+0155da1	1.090064	13.4	discard	label smoothing 0.01 (train-only); much worse than 92ad9aa (1.076100)
+284079d	1.076372	11.4	discard	SCALAR_LR 0.5 to 0.49 (setsid run); worse than 92ad9aa (1.076100)
+e954ef6	1.076548	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044179; worse than 92ad9aa (1.076100)
+89e934e	1.076711	11.4	discard	FINAL_LR_FRAC 0.075 to 0.0745; worse than 92ad9aa (1.076100)
+81a02b1	1.076802	11.4	discard	clip_grad_norm 1.0 after micro-steps; worse than 92ad9aa (1.076100)
+43ba721	1.076317	11.4	discard	EMBEDDING_LR 0.625 to 0.6252; worse than 92ad9aa (1.076100)
+35addf3	1.076621	11.4	discard	MATRIX_LR 0.04418 to 0.04419; worse than 92ad9aa (1.076100)
+268fbbe	1.076756	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044175; worse than 92ad9aa (1.076100)
+4d4e41f	1.085474	11.4	discard	x0_lambdas init 0.10 to 0.11; worse than 92ad9aa (1.076100)
+ee98ee5	1.085474	11.4	discard	x0_lambdas init 0.10 to 0.09; worse than 92ad9aa (1.076100)
+f02b6ed	1.076346	11.4	discard	WINDOW_PATTERN SSSL to SSLL; worse than 92ad9aa (1.076100)
+2660e7e	1.092400	11.4	discard	MLP ReLU^2 to GELU (tanh approx); worse than 92ad9aa (1.076100)
+97d24dd	1.087844	12.8	discard	HEAD_DIM 128->96 (n_embd 576, 6 heads); worse than 92ad9aa (1.076100)
+dd04709	1.082186	11.4	discard	WARMUP_RATIO 0->0.01 (log: run_iter_warmup_mcp); worse than 92ad9aa (1.076100)
+ea32307	1.076728	11.4	discard	Muon momentum ramp step/180 to step/179 (log: run_iter_mu179); worse than 92ad9aa (1.076100)
+647fb51	1.087936	13.5	discard	MLP ReLU^2 -> SwiGLU (run_swioglu_full.log); worse than 92ad9aa (1.076100)
+2d81fac	1.076200	11.4	discard	matmul precision high->highest (run_matmul_highest.log); slightly worse than 92ad9aa (1.076100)
+aca4504	1.076493	11.4	discard	RoPE base 10000 -> 12000 (between default and failed 50k trial)
+ee45f8f	1.174535	11.4	discard	Muon terminal momentum 0.952 — INVALID: tok/s ~half vs baseline (~283k vs ~635k), only 177 steps in 300s wall (GPU contention)
+6a23f50	1.076349	11.4	discard	Muon WEIGHT_DECAY 0.2 to 0.198; worse than 92ad9aa (1.076100)
+d206064	1.076905	11.4	discard	logits softcap 15 to 15.5 (clean ~635k tok/s run); worse than 92ad9aa
+7e1c60b	1.076166	11.4	discard	Muon ns_steps 5 to 6; slightly worse than 92ad9aa (1.076100)
+263ae2b	1.076212	11.4	discard	EMBEDDING_LR 0.625 to 0.6248; worse than 92ad9aa (1.076100)
+3b7e47e	1.085130	11.4	discard	init x0_lambdas 0.1 to 0.099; much worse than 92ad9aa (1.076100)
+5ce5388	1.076622	11.4	discard	AdamW beta1 0.8 to 0.812 (beta2 0.94); worse than 92ad9aa (1.076100)
+0bc1ea1	1.076776	11.4	discard	AdamW beta2 0.94 to 0.939; worse than 92ad9aa (1.076100)
+9d0f3bf	1.076297	11.4	discard	SCALAR_LR 0.5 to 0.501 (clean single job, run_mcp_scalar501.log); worse than 92ad9aa (1.076100)
+70af0ab	1.171707	11.4	discard	Muon momentum ramp step/180 to /181; run_mu181.log has TWO summaries + ~half tok/s vs baseline — invalid / GPU contention
+b0ad95a	1.076468	11.4	discard	AdamW beta2 0.94 to 0.9398; worse than 92ad9aa (1.076100)
+bfb5bf9	1.076688	11.4	discard	Muon momentum ramp step/180 to step/177; worse than 92ad9aa (1.076100)
+a3d35d8	1.080264	11.4	discard	Muon WEIGHT_DECAY 0.2 to 0.199; worse than 92ad9aa (twin train.py may have contended GPU)
+05f6ff8	1.076619	11.4	discard	Muon WEIGHT_DECAY 0.2 to 0.2005; worse than 92ad9aa (1.076100); clean nohup run_wd2005.log
+ccfddd4	1.085693	11.4	discard	x0_lambdas init 0.1 to 0.1005
+0c137da	1.076842	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044177; worse than 92ad9aa (1.076100)
+21d0171	1.088658	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.004705 (WSL full run); much worse than 92ad9aa (1.076100)
+14ef49d	1.092037	22.3	discard	DEVICE_BATCH_SIZE 32 to 64; worse than SM12 local baseline 1.088658 (11702MB peak @ bs32)
+a744984	1.076724	11.4	keep	Muon MATRIX_LR 0.04418 to 0.04419 (clean bs32 run; val_bpb beats local 1.088658 baseline)
+001df3b	1.076717	11.4	discard	AdamW beta2 0.94 to 0.941; worse than 92ad9aa (1.076100)
+ab46276	1.076931	11.4	discard	x0_lambdas Adam beta2 use adam_betas[1] (0.94); worse than 92ad9aa (1.076100)
+4c6e429	1.076416	11.4	discard	AdamW beta2 0.94 to 0.9399; worse than 92ad9aa (1.076100)
+11f457b	1.076527	11.4	discard	AdamW beta2 0.94 to 0.9402; worse than 92ad9aa (1.076100)
+2884666	1.155495	11.4	discard	FINAL_LR_FRAC 0.075 to 0.0749; worse than 92ad9aa (1.076100); SM12 ~205 steps/300s
+195c109	1.076137	11.4	discard	WARMDOWN_RATIO 0.5 to 0.502; slightly worse than 92ad9aa (1.076100)
+a974397	1.076530	11.4	discard	x0 Adam beta2 0.95->0.942; clean single-GPU SM12 run; worse than 92ad9aa (1.076100)
+2065b37	1.076315	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044181 (bg run_mcp_cycle.log); worse than 92ad9aa (1.076100)
+c22f906	1.076220	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044179 (bg run); worse than 92ad9aa (1.076100)
+008e31c	1.076220	11.4	discard	AdamW beta1 0.8 to 0.801 (beta2 0.94); same val_bpb as c22 run noise; worse than 92ad9aa (1.076100)
+2ebd26c	1.075910	11.4	keep	RoPE base 10000->10500 (GPTConfig.rope_base); beats 92ad9aa 1.076100; screen+poll run
+1acd589	1.076567	11.4	discard	Muon MATRIX_LR 0.04418->0.044185 on RoPE 10500; worse than 2ebd26c 1.075910
+fff9ee0	1.076484	11.4	discard	RoPE base 10500->10600; worse than 2ebd26c 1.075910
+7e83f49	1.076414	11.4	discard	resid_lambdas Adam LR factor 0.01->0.01025 (RoPE 10500); worse than 2ebd26c 1.075910
+ae0d99b	1.076383	11.4	discard	RoPE base 10500 to 10475; worse than 2ebd26c 1.075910
+906c14c	1.076816	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044181 (setsid run); worse than 2ebd26c 1.075910
+5b565c2	1.076811	11.4	discard	RoPE base 10500 to 10512 (micro sweep); worse than 2ebd26c 1.075910
+c6b7081	1.076148	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044176 (RoPE 10500); worse than 2ebd26c 1.075910
+fe93df6	1.081179	11.4	discard	RoPE 10500->10505; worse than best keep 2ebd26c 1.075910 (SM12)
+1f23a6a	1.076488	11.4	discard	VE gate 32->48; worse than best keep 2ebd26c 1.075910
+73dc1b6	1.076314	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.004715 (RoPE 10500); worse than 2ebd26c 1.075910
+6e79961	1.076288	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.004692; worse than 2ebd26c 1.075910
+d84e6ba	1.076625	11.4	discard	RoPE base 10500 to 10501; worse than 2ebd26c 1.075910
+94f3efc	1.076617	11.4	discard	WARMDOWN_RATIO 0.5 to 0.48; worse than best 2ebd26c 1.075910
+b821130	1.153868	11.4	discard	FINAL_LR_FRAC 0.075->0.076; val_bpb far worse than 2ebd26c (run had ~7% mfu vs ~15% baseline; likely GPU contention + LR change)
+89ca9f4	1.077022	11.4	discard	logit softcap 15->16; worse than 2ebd26c 1.075910
+4ff8e6b	1.076765	11.4	discard	Muon momentum ramp step/180->step/200; worse than 2ebd26c 1.075910
+ade0cb3	1.076555	11.4	discard	RoPE base 10500 to 10490 (full nohup run); worse than 2ebd26c 1.075910
+3c3f82c	1.076634	11.4	discard	RoPE base 10500 to 10501; worse than 2ebd26c 1.075910
+3951fca	1.076403	11.4	discard	RoPE base 10500 to 10300; worse than best 2ebd26c 1.075910
+7655da4	1.076840	11.4	discard	RoPE base 10500 to 10425; worse than best 2ebd26c 1.075910
+8532424	1.076905	11.4	discard	Muon MATRIX_LR 0.04418 to 0.04420 (RoPE 10500); worse than 2ebd26c 1.075910
+ac0860f	1.076562	11.4	discard	Muon MATRIX_LR 0.04418 to 0.04416 (RoPE 10500); worse than 2ebd26c 1.075910
+4b8aaca	1.076466	11.4	discard	FINAL_LR_FRAC 0.075 to 0.0751; worse than 2ebd26c 1.075910
+4061bdc	1.076235	11.4	discard	FINAL_LR_FRAC 0.075 to 0.07485; worse than 2ebd26c 1.075910
+35aaafe	1.076732	11.4	discard	RoPE base 10500 to 10499; worse than 2ebd26c 1.075910
+10a1ada	1.177464	11.4	discard	MUON NorMuon beta2 0.952 — INVALID log (two val_bpb blocks, ~174 steps/300s, concurrent jobs / GPU contention)
+04743d7	1.076371	11.4	discard	MUON NorMuon beta2 0.952 (flock single-job run); worse than best 2ebd26c 1.075910
+8b6610e	1.076581	11.4	discard	RoPE base 10500 to 10498 (flock run); worse than 2ebd26c 1.075910
+27242cb	1.076563	11.4	discard	AdamW eps 1e-10 to 5e-11 (ADAM_EPS); worse than 2ebd26c 1.075910
+6e3e5ee	1.076343	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044184 (RoPE 10500); worse than 2ebd26c 1.075910
+1d70526	0.000000	0.0	crash	RoPE 10500->10498: run died after ~step4 no val_bpb (log 1232B; likely killed/OOM)
+849db69	1.076836	11.4	discard	AdamW beta2 0.9395 to 0.9396 (RoPE 10500); worse than best keep 2ebd26c 1.075910
+bcfda19	1.076836	11.4	discard	FINAL_LR_FRAC 0.075 to 0.0735 (RoPE 10500); worse than 2ebd26c 1.075910
+bd8344f	1.076836	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044179; same val_bpb as prior SM12 runs; worse than 2ebd26c 1.075910
+ca23221	1.076579	11.4	discard	RoPE 10500->10550 + Adam beta2 0.9395 stack; worse than best 2ebd26c 1.075910 (flock single job)
+378cdc9	1.081088	11.4	discard	RoPE 10500->10508; much worse than 2ebd26c 1.075910 (single uv job ~635k tok/s)
+1d057c2	1.076527	11.4	discard	AdamW beta2 0.94 to 0.9398; worse than 2ebd26c 1.075910 (setsid ~635k tok/s)
+34e70d4	1.076110	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044179; worse than 2ebd26c 1.075910
+fd63c8e	1.076611	11.4	discard	RoPE base 10500->10525; worse than best keep 2ebd26c 1.075910
+fd69c46	1.076623	11.4	discard	WARMDOWN_RATIO 0.5->0.495 (PYTHONUNBUFFERED nohup run_wd495.log); worse than 2ebd26c 1.075910
+14fcaf5	1.076477	11.4	discard	Muon MATRIX_LR 0.04418->0.044175 (run_mlr44175.log); worse than 2ebd26c 1.075910
+5d77eba	1.076877	11.4	discard	EMBEDDING_LR 0.625 to 0.6255 (RoPE 10500); worse than 2ebd26c 1.075910
+62e66f3	1.160778	11.4	discard	RoPE 10500->10492 INVALID: 198 steps/300s mfu~7.9% vs ~15% baseline (GPU contention)
+c8c8791	1.076262	11.4	discard	RoPE base 10500 -> 10485 (micro sweep; worse than best 2ebd26c 1.075910)
+6e11c13	1.177006	11.4	discard	RoPE 10500->10495 INVALID: multiple train.py PIDs + ~283k tok/s vs ~635k baseline; val_bpb useless
+55898d0	1.076858	11.4	discard	RoPE base 10500 to 10506; worse than best 2ebd26c 1.075910
+6f8d2b5	1.076373	11.4	discard	Muon WD floor 12pct at progress=1; worse than 2ebd26c 1.075910
+eca5cb0	1.076361	11.4	discard	Muon MATRIX_LR 0.04418 to 0.044182; worse than best 2ebd26c 1.075910
+f7041cc	1.076512	11.4	discard	Muon momentum ramp step/180 to /176; worse than best 2ebd26c 1.075910
+ee84a8f	1.076866	11.4	discard	FINAL_LR_FRAC 0.075 to 0.07503; worse than best 2ebd26c 1.075910
+864a2d8	1.082308	11.4	discard	WARMUP_RATIO 0->0.005 (RoPE 10500); much worse than 2ebd26c 1.075910
+2b1e0d7	1.075992	11.4	discard	RoPE base 10500 to 10502; slightly worse than 2ebd26c 1.075910
+4c9694d	1.076434	11.4	discard	EMBEDDING_LR 0.625 to 0.62495 (RoPE 10500); worse than 2ebd26c 1.075910 (setsid run)
+9b80312	1.076378	11.4	discard	EMBEDDING_LR 0.625 to 0.62504 (RoPE 10500); worse than 2ebd26c 1.075910
+24ec85c	0.000000	0.0	crash	ASPECT_RATIO 64->65: tool timeout mid-train; run.log no val_bpb
+d89af4f	1.095874	14.1	discard	ASPECT_RATIO 64->65 n_embd 640; worse than best 2ebd26c 1.075910
+1c7d5ae	1.076860	11.4	discard	AdamW beta2 0.94 to 0.9403; worse than best 2ebd26c 1.075910
+11ced1a	1.076394	11.4	discard	RoPE base 10500->10504; worse than best 2ebd26c 1.075910
+03d5dfa	1.076402	11.4	discard	RoPE base 10500->10514; worse than best 2ebd26c 1.075910
+5ad5eb4	1.076391	11.4	discard	Muon momentum ramp step/180 to /183; worse than best 2ebd26c 1.075910
+c132beb	1.076302	11.4	discard	EMBEDDING_LR 0.625 to 0.62503 (RoPE 10500); worse than 2ebd26c 1.075910
+4a1f6c7	1.076703	11.4	discard	FINAL_LR_FRAC 0.075 to 0.07502; worse than 2ebd26c 1.075910
+8bc55d5	1.071388	11.4	keep	TOTAL_BATCH_SIZE 2**19 to 2**18; more steps/smaller global batch; new best vs 2ebd26c
+4376f7b	1.071198	11.4	keep	MATRIX_LR 0.04418 to 0.04421 (Muon, batch 2**18); new best vs 8bc55d5
+2a5cf1d	1.075552	11.4	discard	MATRIX_LR 0.04421 to 0.04423; worse than 4376f7b 1.071198
+6023e3d	1.071296	11.4	discard	Muon MATRIX_LR 0.04421 to 0.044205; worse than 4376f7b 1.071198
+6ef3ee6	1.072956	11.4	discard	Muon MATRIX_LR 0.04421 to 0.044211; worse than 4376f7b 1.071198 (flock single job)
+a1edb3b	1.071813	11.4	discard	Muon MATRIX_LR 0.04421 to 0.044208; worse than 4376f7b 1.071198
+56bb724	1.075850	11.4	discard	Muon MATRIX_LR 0.04421 to 0.044209 (flock run.log); worse than 4376f7b 1.071198
+f136e66	1.074989	11.4	discard	Muon MATRIX_LR 0.04421->0.044212; worse than 4376f7b 1.071198 (single job ~631k tok/s)
+5aa143f	1.074989	11.4	discard	MATRIX_LR 0.044208; same val_bpb as 0.044212 run / worse than 4376f7b 1.071198
+0be1657	1.090813	11.4	discard	TOTAL_BATCH_SIZE 2**17 vs 4376f7b 2**18; much worse val_bpb
+47d76ec	1.071501	11.4	discard	UNEMBEDDING_LR 0.0047->0.00465; worse than 4376f7b 1.071198
+642a263	1.075407	11.4	discard	UNEMBEDDING_LR 0.0047 to 0.00475; worse than 4376f7b 1.071198 (single-job PYTHONUNBUFFERED run)
+99bddf8	1.071870	11.4	discard	Muon momentum ramp step/180 to /184; worse than 4376f7b 1.071198
+930f7dc	0.000000	0.0	crash	Muon MATRIX_LR 0.044203: process ended after step 2; run.log has no val_bpb/traceback
+c3155fa	1.071805	11.4	discard	AdamW beta2 0.94 to 0.945 (batch 2**18); worse than 4376f7b 1.071198
+e120bfa	1.075687	11.4	discard	SCALAR_LR 0.5 to 0.498; worse than 4376f7b 1.071198
+0453246	1.072857	11.4	discard	RoPE base 10500 to 10503; worse than 4376f7b 1.071198

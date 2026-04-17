@@ -1,0 +1,201 @@
+commit	val_bpb	memory_gb	status	description
+154a63f	1.259739	22.6	keep	baseline unmodified
+d27aea5	1.259739	22.5	discard	torch.compile no improvement
+6845da7	1.255342	22.1	keep	GQA n_kv_head=n_head/2
+2ac9c1f	1.269809	22.1	discard	MATRIX_LR 0.045 worse
+c86327b	1.250256	22.1	keep	WARMDOWN_RATIO 0.45 longer mid-plateau
+21645bb	1.171350	22.1	keep	FINAL_LR_FRAC 0.08 nonzero cool-down floor
+31fbdb0	1.127982	19.6	keep	SwiGLU MLP (LLaMA-style FFN)
+06df695	1.859708	38.7	discard	DEVICE_BATCH_SIZE 32->64 (fewer effective training; worse val_bpb)
+fc39fda	1.168284	11.1	discard	torch.compile full model; better throughput but val_bpb > best 1.128
+80c361a	1.148254	11.1	discard	torch.compile + MATRIX_LR 0.035; still above best 1.127982
+1f284e6	1.149728	19.6	discard	WARMUP_RATIO 0.05 + perf_counter dt; worse than best 1.128
+0211789	1.120631	19.6	keep	perf_counter step timing + clamp progress (WSL-safe)
+ab7cd97	1.120970	19.6	discard	EMBEDDING_LR 0.65; slightly worse than 1.120631
+94f01a3	1.121435	19.6	discard	MATRIX_LR 0.038; worse than 1.120631
+f5f705a	1.121319	19.6	discard	WEIGHT_DECAY 0.15; slightly worse than best 1.120631
+a726c38	1.118455	19.6	keep	UNEMBEDDING_LR 0.005 (lm_head Adam; prior best 0.004)
+96f86e4	1.118268	19.6	keep	FINAL_LR_FRAC 0.10 (cool-down floor vs 0.08)
+3a51ce0	1.115084	19.6	keep	rope_theta 500k (LLaMA-style RoPE)
+8ae3654	1.117537	19.6	discard	SOFTCAP 20 vs 15; worse than rope win
+7ce2120	1.114708	19.6	keep	FINAL_LR_FRAC 0.11 (cool-down floor nudge after rope)
+e13673a	1.114045	19.6	keep	MATRIX_LR 0.042 (Muon slight bump vs 0.04)
+77e4040	1.113998	19.6	keep	FINAL_LR_FRAC 0.12 (warmdown floor vs 0.11)
+c2d18dd	1.114451	19.6	discard	ADAM_BETAS beta1 0.85 (worse than 1.113998)
+0dd943a	1.175051	19.6	discard	EMBEDDING_LR 0.57 vs 0.6; worse than best 1.114
+039e761	1.112864	19.6	keep	softcap 15->12 (tighter logit bound)
+a37225b	1.113317	19.6	discard	WEIGHT_DECAY 0.18 vs 0.2; worse than 1.112864
+ba42aa4	1.112324	19.6	keep	softcap 12->11 (continues 15->12 win)
+50a451f	1.112625	19.6	discard	softcap 11->10; worse than best 1.112324
+de9028e	1.112049	19.6	keep	MATRIX_LR 0.042->0.043 (Muon nudge)
+9947ecc	1.111844	19.6	keep	FINAL_LR_FRAC 0.12->0.125 (warmdown floor)
+4d2aeb4	1.111339	19.6	keep	UNEMBEDDING_LR 0.005->0.0052 (lm_head Adam)
+5a5377b	1.111829	19.6	discard	rope_theta 500k->600k; worse than best 1.111339
+a7b29cc	1.111209	19.6	keep	FINAL_LR_FRAC 0.125->0.13 (warmdown floor)
+8c8eb33	1.111086	19.6	keep	MATRIX_LR 0.043->0.044 (Muon nudge)
+4ddc567	1.111066	19.6	keep	MATRIX_LR 0.044->0.045 (Muon nudge)
+fc92a14	1.111066	19.6	discard	UNEMBEDDING_LR 0.0052->0.0054 (equal val_bpb vs best)
+266defe	1.110539	19.6	keep	MATRIX_LR 0.045->0.046 (Muon nudge)
+e41d872	1.110310	19.6	keep	MATRIX_LR 0.046->0.047 (Muon nudge; RTX/512-dim run)
+8091a5b	1.110501	19.6	discard	MATRIX_LR 0.047->0.048 worse than best 1.110310
+da2390d	1.110652	19.6	discard	FINAL_LR_FRAC 0.13->0.135 worse than best 1.110310
+e4f3fb5	1.110652	19.6	discard	FINAL_LR_FRAC 0.13->0.127 (same val as 0.135 run; worse than 1.110310)
+89876ee	1.110780	19.6	discard	SCALAR_LR 0.5->0.52 (Adam resid/x0; worse than best 1.110310)
+421b498	1.110799	19.6	discard	SCALAR_LR 0.5->0.48 (worse than best 1.110310)
+b01732d	1.110952	19.6	discard	WARMDOWN_RATIO 0.45->0.43 (worse than best 1.110310)
+5462a0f	1.321507	19.6	discard	WARMDOWN_RATIO 0.45->0.46 (much worse val_bpb; reset)
+6913c66	1.110510	19.6	discard	MATRIX_LR 0.047->0.0468 (slightly worse than best 1.110310)
+eb42584	1.110703	19.6	discard	ADAM_BETAS beta1 0.8->0.81 (worse than best 1.110310)
+64b59c5	1.186248	19.6	discard	LABEL_SMOOTHING 0.02 in CE (much worse than best 1.110310)
+5693335	1.110319	19.6	discard	ADAM_BETAS beta2 0.95->0.94 (slightly worse than best 1.110310)
+53add16	1.110476	19.6	discard	FINAL_LR_FRAC 0.13->0.129 (worse than best 1.110310)
+0790a33	1.110315	19.6	discard	rope_theta 500k->480k (slightly worse than best 1.110310)
+38d8558	1.110689	19.6	discard	EMBEDDING_LR 0.6->0.605 (worse than best 1.110310)
+3ff02a9	1.111968	19.6	discard	Muon momentum ramp step/300->/200 (worse than best 1.110310)
+4a90512	1.110675	19.6	discard	clip_grad_norm 1.0 before optimizer step (worse than 1.110310)
+d07e850	1.548330	19.6	discard	FINAL_LR_FRAC 0.13->0.128; val far worse (62 steps vs ~248; suspect slow dt / interference)
+d69562d	1.110899	19.6	discard	WARMDOWN_RATIO 0.45->0.44; worse than best 1.110310
+3404ed5	1.110446	19.6	discard	EMBEDDING_LR 0.6->0.595; worse than best 1.110310
+a30edcd	1.111331	19.6	discard	rope_theta 490k between 480k/500k; worse than best 1.110310
+9ec849f	1.110124	19.6	keep	rope_theta 500k->502k (2nd run; 1st skewed by cold compile)
+214c95a	1.110124	19.6	discard	FINAL_LR_FRAC 0.13->0.131; equal val vs 9ec849f
+a52b3ca	1.110106	19.6	keep	rope_theta 502k->503k (+1k from best line)
+4191613	1.110431	19.6	discard	rope_theta 503k->504k; worse than 1.110106
+c00f94a	1.109903	19.6	keep	rope_theta 502.5k (bisect after 504k worse than 503k)
+24655aa	1.110365	19.6	discard	rope_theta 502.5k->502.4k; worse than best 1.109903
+1715cba	1.115837	19.6	discard	rope_theta 502.5k->502.6k; much worse than best 1.109903
+ef0946b	1.110097	19.6	discard	rope_theta 502.5k->502.52k (+20); worse than best 1.109903
+bfa621b	1.110289	19.6	discard	rope_theta 502500->502495 (-5); worse than best 1.109903
+42b4906	1.109937	19.6	discard	VE gate ve_gate_channels 32->40; slightly worse than best 1.109903
+3d74594	1.110017	19.6	discard	rope_theta 502500->502502 (+2); worse than best 1.109903
+b5a68af	1.109996	19.6	discard	rope_theta 502500->502498 (-2); worse than best 1.109903
+35148b8	1.110039	19.6	discard	UNEMBEDDING_LR 0.0052->0.00515; worse than best 1.109903
+4bef26d	1.109708	19.6	keep	MATRIX_LR 0.047->0.0469 (Muon tiny down; new best)
+9e80479	1.110531	19.6	discard	MATRIX_LR 0.04695 bisect vs 0.0469 (worse val_bpb)
+921b3e2	1.110101	19.6	discard	rope_theta 502500->502499 micro -1 (worse vs 1.109708)
+f016a7c	1.110048	19.6	discard	MATRIX_LR 0.04685 bisect (worse than best 1.109708)
+c9001fe	1.110186	19.6	discard	UNEMBEDDING_LR 0.00522 (worse than best 1.109708)
+1e7d9e0	1.109936	19.6	discard	FINAL_LR_FRAC 0.13->0.132; worse than best 1.109708
+63bf6b4	1.110239	19.6	discard	FINAL_LR_FRAC 0.13->0.128; worse than best 1.109708
+3f8627d	1.110109	19.6	discard	rope_theta 502500->502515 (+15); worse than best 1.109708
+ec622a0	1.110039	19.6	discard	WARMDOWN_RATIO 0.45->0.448; worse than best 1.109708
+f39ae25	1.110404	19.6	discard	FINAL_LR_FRAC 0.13->0.131; worse than best 1.109708
+a7bff15	1.110735	19.6	discard	EMBEDDING_LR 0.6->0.602 micro bump; worse than best 1.109708
+d06c4f1	1.110153	19.6	discard	softcap 11->10.75; worse than best 1.109708
+017912a	1.110057	19.6	discard	rope_theta 502500->502510 (+10); worse than best 1.109708
+3f00062	1.109952	19.6	discard	UNEMBEDDING_LR 0.0052->0.00518; worse than best 1.109708
+681cf9a	1.109844	19.6	discard	rope_theta 502500->502498 (-2); worse than best 1.109708
+c848070	1.727480	19.6	discard	x0_lambdas 0.1->0.095 (RTX few steps; worse vs best 1.109708)
+a804d1f	1.727480	19.6	discard	softcap 11->11.08; equal local val vs prior run; vs TSV best 1.109708
+4125324	1.727480	19.6	discard	FINAL_LR_FRAC 0.13->0.131; equal val vs local; vs TSV best 1.109708
+d3bb1c6	1.727480	19.6	discard	EMBEDDING_LR 0.6->0.601; equal val on RTX; vs TSV best 1.109708
+5ee1b4b	1.112356	10.0	discard	DEVICE_BATCH_SIZE 32->16; 243 steps; worse than best 1.109708
+de8dbb2	1.110374	19.6	discard	Muon momentum ramp step/300->/320; worse than best 1.109708
+e060fd2	1.110056	19.6	discard	EMBEDDING_LR 0.597 micro; worse than best 1.109708
+044ee2a	1.110639	19.6	discard	rope_theta 502500->502501 (+1); worse than best 1.109708
+86c0f5a	1.109883	19.6	discard	Muon momentum ramp step/300->/305; worse than best 1.109708
+7fa6e79	1.110228	19.6	discard	softcap 11->11.25 (mild logit headroom vs best 1.109708)
+1bb8dc5	1.118297	19.6	discard	x0_lambdas init 0.1->0.11 (much worse vs 1.109708)
+a2679fb	1.110289	19.6	discard	MATRIX_LR 0.0469->0.04688 (worse vs best 1.109708)
+039b701	1.110414	19.6	discard	Muon momentum ramp step/300->/290 (worse than 1.109708)
+ed4bc0d	1.109844	19.6	discard	rope_theta 502500->502505 (+5; worse than 1.109708)
+024caf9	1.110072	19.6	discard	rope_theta 502500->502495 (-5; worse than 1.109708)
+698fbb6	1.109988	19.6	discard	EMBEDDING_LR 0.6->0.599 (worse than 1.109708)
+bfa4f4a	1.109984	19.6	discard	softcap 11->10.9 (worse than 1.109708)
+dc5930b	1.110167	19.6	discard	rope_theta 502500->502450 (micro -50; worse than 1.109708)
+be17f81	1.110284	19.6	discard	WINDOW_PATTERN SSSL->LLLL (full attn all layers; worse than 1.109708)
+9333ef6	1.110151	19.6	discard	FINAL_LR_FRAC 0.13->0.129 (worse than best 1.109708)
+3c03f8c	1.110063	19.6	discard	softcap 11->10.98 (worse than best 1.109708)
+4bef26d	1.614373	19.6	keep	WSL resume: baseline train @4bef26d (local val ref)
+2c4866f	1.110240	19.6	discard	softcap 11->11.02; val_bpb > historical best 1.109708
+a20c1e2	1.109998	19.6	discard	MATRIX_LR 0.0469->0.0470; worse than best 1.109708
+fd94122	1.109998	19.6	discard	MATRIX_LR 0.0469->0.04685; same val as 0.047; worse than 1.109708
+3842f1b	1.115966	19.4	discard	KV_HEAD_GROUP 2->4 (n_kv=1; worse than best 1.109708)
+b211706	1.110258	19.6	discard	WEIGHT_DECAY 0.2->0.205 (worse than best 1.109708)
+2703649	1.109930	19.6	discard	ADAM_BETAS beta2 0.95->0.952 (worse than best 1.109708)
+fdbceb1	1.109930	19.6	discard	rope_theta 502500->502520 (+20; worse than best 1.109708)
+2d0f1b1	1.109930	19.6	discard	Muon ns_steps 5->4 (worse than best 1.109708)
+5b27769	1.109930	19.6	discard	UNEMBEDDING_LR 0.0052->0.00512 (worse than best 1.109708)
+6e67278	1.109930	19.6	discard	WEIGHT_DECAY 0.2->0.198 (worse than best 1.109708)
+029e47a	1.109999	19.6	discard	VE gate ve_gate_channels 32->24; worse than best 1.109708
+4bd39ca	1.110498	19.6	discard	EMBEDDING_LR 0.597; worse than best 1.109708
+52c0bbd	1.109864	19.6	discard	Muon momentum ramp step/300->295 (worse than best 1.109708)
+50503cb	1.109864	19.6	discard	grad clip max_norm 2.0 before step (worse than best 1.109708)
+9ddcc0c	1.113727	19.6	discard	CE label_smoothing 0.005 train-only (worse than best 1.109708)
+cfb526d	1.110630	19.6	discard	WARMDOWN_RATIO 0.45->0.451 (worse than best 1.109708)
+82cb83f	1.109777	19.6	discard	ADAM_BETAS beta1 0.8->0.802 (worse than best 1.109708)
+150395a	1.109846	19.6	discard	enable CUDA matmul/cudnn TF32 (slightly worse than best 1.109708)
+8581c09	1.109846	19.6	discard	AdamW eps 1e-10->1e-9 (equal to TF32 run; worse than best 1.109708)
+7b2aca4	0.000000	0.0	crash	HEAD_DIM 64 without SM12 compile-off: Inductor ptxas / NoTritonConfigsError
+76895c2	1.128098	19.6	discard	SM12 torch.compile off + HEAD_DIM 64 (8 heads); worse than best 1.109708
+ba00d65	1.110979	19.6	discard	rope_theta 502500->502496; worse than best 1.109708
+c31a4f5	1.110450	19.6	discard	Muon momentum ramp step/300->/330; worse than best 1.109708
+ce13300	1.110450	19.6	discard	TOTAL_BATCH_SIZE 2**18 (run.log still showed grad_accum 8; val not better than 1.109708)
+06600ab	1.130151	19.6	discard	WARMUP_RATIO 0.02 (2% time budget LR warmup; worse than best 1.109708)
+276b701	1.109614	19.6	keep	Muon polar express ns_steps 5->6 (6th step repeats last coeff; new best vs 1.109708)
+19924e8	1.109423	19.6	keep	Muon polar express ns_steps 6->7 (repeat last polar coeff)
+08ba04f	1.109000	19.6	keep	Muon polar express ns_steps 7->8 (repeat last polar coeff)
+c5f0887	1.108612	19.6	keep	Muon polar express ns_steps 8->9 (repeat last polar coeff)
+d50d555	1.109032	19.6	discard	Muon polar express ns_steps 9->10 (worse than best 1.108612)
+d82c69d	1.109304	19.6	discard	UNEMBEDDING_LR 0.0052->0.00525 (worse than best 1.108612)
+4734602	1.109141	19.6	discard	MATRIX_LR 0.0469->0.04695 bisect (worse than 1.109000)
+f8ec567	1.109048	19.6	discard	MATRIX_LR 0.04691 bisect (better than 0.04695; still > 1.109000)
+ed032e4	1.108908	19.6	discard	MATRIX_LR 0.0469->0.04692 (worse than best 1.108612)
+d3dd341	1.108908	19.6	discard	MATRIX_LR 0.0469->0.04688 (worse than best 1.108612)
+8d0d7aa	1.108908	19.6	discard	UNEMBEDDING_LR 0.0052->0.00516 (worse than best 1.108612)
+aee631d	1.108974	19.6	discard	ADAM_BETAS beta2 0.95->0.948 (worse than best 1.108612)
+6c5d7a3	1.108909	19.6	discard	SCALAR_LR 0.5->0.502 (worse than best 1.108612)
+531dbd5	1.108854	19.6	discard	UNEMBEDDING_LR 0.0052->0.00517 (worse than best 1.108612)
+29debd2	1.110041	19.6	discard	MATRIX_LR 0.0469->0.04693 (worse than best 1.108612 on this GPU)
+ff81ba8	1.111600	19.6	discard	ADAM_BETAS beta1 0.8->0.785; RTX run worse than historical best 1.108612
+b01e537	1.110834	19.6	discard	ADAM_BETAS beta1 0.8->0.797; still worse than best 1.108612
+b61e456	1.112073	19.6	discard	x0_lambdas Adam beta1 0.96->0.958; worse than best 1.108612
+4eb213a	1.108137	20.1	keep	KV_HEAD_GROUP 2->1 (full MHA; val beat 1.108612)
+f392a5e	1.108253	20.1	discard	MATRIX_LR 0.0469->0.0470 after MHA; worse than 1.108137
+c764c8d	1.107378	20.1	keep	softcap 10.95 (logit interpolate); RTX5090 full run beats prior TSV best 1.108137
+917e320	1.107372	20.1	keep	softcap 10.95->10.93 (slightly tighter; beats 1.107378)
+b1e6936	1.107498	20.1	discard	softcap 10.93->10.91; worse than best 1.107372
+47d9821	1.107558	20.1	discard	softcap bisect 10.925; worse than best 1.107372
+ebb0a55	1.107454	20.1	discard	softcap 10.93->10.935 bisect vs 10.95; worse than 1.107372
+c50faad	1.107612	20.1	discard	softcap 10.93->10.932 bisect; worse than 1.107372
+d32a9be	1.108076	20.1	discard	MATRIX_LR 0.0469->0.04695; worse than 1.107372
+d9a7660	1.107600	20.1	discard	softcap 10.93->10.931 micro looser; worse than best 1.107372
+a1f16b6	1.107600	20.1	discard	SCALAR_LR 0.5->0.498; worse than best 1.107372
+c2df9e2	1.107462	20.1	discard	WARMDOWN_RATIO 0.45->0.448; worse than best 1.107372
+2d5b02b	1.107682	20.1	discard	softcap 10.93->10.924; worse than best 1.107372
+0fc8d65	1.107783	20.1	discard	MATRIX_LR 0.0469->0.04691; worse than best 1.107372
+fd00bcc	1.107780	20.1	discard	softcap 10.93->10.932 bisect; worse than best 1.107372
+acfcd09	1.107763	20.1	discard	softcap 10.93->10.928 tighter; worse than best 1.107372
+c8af0ea	1.107763	20.1	discard	FINAL_LR_FRAC 0.13->0.1285; worse than best 1.107372
+667b77f	1.107763	20.1	discard	softcap 10.929; same val as nearby softcap runs; worse than 1.107372
+5d88c57	1.107731	20.1	discard	EMBEDDING_LR 0.6->0.598; worse than best 1.107372
+dfc6775	1.115497	20.1	keep	TOTAL_BATCH_SIZE 589824 (9 grad accum vs 2**19); WSL beat local 917e320 ref 1.282
+8c66d42	1.107848	20.1	keep	TOTAL_BATCH_SIZE 589824->2**19 (8 grad accum; val beat dfc6775 1.115)
+08db70e	1.108056	20.1	discard	softcap 10.93->10.92; worse than best line 1.107848
+dc65330	1.106892	20.1	keep	softcap 10.93->10.934 micro headroom (vs 10.92 discard)
+9dc8add	1.107370	20.1	discard	softcap 10.934->10.936; worse than best 1.106892
+8a6f59b	1.108071	20.1	discard	softcap 10.934->10.933; worse than best 1.106892
+d514392	1.108071	20.1	discard	softcap 10.934->10.935 bisect; worse than best 1.106892
+bfecd3e	1.107987	20.1	discard	rope_theta 502500->502510; worse than TSV best 1.106892
+6dae7e9	1.106907	20.1	discard	MATRIX_LR 0.0469->0.046925 bisect; worse than best 1.106892
+12c7a2e	1.106907	20.1	discard	WEIGHT_DECAY 0.2->0.199 micro; worse than best 1.106892
+f9ab778	1.119362	20.1	discard	x0_lambdas init 0.1->0.099; much worse than best 1.106892
+39d29a6	1.107258	20.1	discard	softcap 10.934->10.9345 bisect vs 10.935 discard
+e3f9551	1.107258	20.1	discard	softcap 10.934->10.9341 micro; same val as 10.9345; worse than best 1.106892
+ef9f26f	1.107258	20.1	discard	WARMDOWN_RATIO 0.45->0.449; val worse than TSV best 1.106892
+99406cc	1.106916	20.1	discard	MATRIX_LR 0.0469->0.04688; slightly worse than best 1.106892
+f0b7124	0.000000	0.0	discard	softcap 10.93425 bisect; training aborted (MCP run_command hard timeout; no val_bpb); reset to dc65330
+2cd5f9c	1.107344	20.1	discard	softcap 10.934->10.93385 bisect; worse than best 1.106892
+fc55c3d	1.107081	20.1	discard	rope_theta 502500+4 (502504) full run; worse than TSV best 1.106892
+ea7d4c8	1.107132	20.1	discard	rope_theta 502500->502502 (+2); worse than best 1.106892
+741d298	1.107625	20.1	discard	rope_theta 502500->502501 (+1); worse than best 1.106892
+a8eaa43	1.107355	20.1	discard	rope_theta 502500->502499 (-1); worse than best 1.106892
+67fbc09	1.107561	20.1	discard	softcap 10.934->10.9335 bisect; worse than best 1.106892
+2b48135	0.000000	0.0	discard	softcap 10.93412 bisect; MCP timeout before val_bpb (run incomplete)
+44f6520	1.498410	20.1	discard	MATRIX_LR 0.046905 full WSL run (~59 steps); worse than TSV best 1.106892; reset dc65330
+5316604	1.471747	20.1	keep	Muon momentum ramp step/300->/280; beats prior WSL ref 1.498410 (same SM12 ~61 steps)
+ec74a6a	1.905188	20.1	discard	Muon momentum ramp /280->/285; WSL val worse than 5316604 ref 1.471747
+3412b52	1.108927	20.1	discard	Muon momentum /275->/268; worse than TSV best ~1.106892
+39da848	1.108927	20.1	discard	Muon /278; equal val_bpb vs /268 run on SM12
+546bcad	1.108927	20.1	discard	MATRIX_LR 0.04692; equal val_bpb vs prior SM12 runs
+6302d51	1.108927	20.1	discard	softcap 10.9345; equal val_bpb vs prior SM12 (233 steps)

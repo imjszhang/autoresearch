@@ -1,0 +1,204 @@
+commit	val_bpb	memory_gb	status	description	delta	strategy	rationale
+c110667	1.272152	22.6	keep	baseline unmodified train.py	0.000	BASELINE	first run; initial train.py 648 lines; establishes val_bpb reference
+d4688a9	1.270949	22.6	keep	Muon MATRIX_LR 0.04 to 0.044	0.000	GUARD	δ=0 S=0 RR=0 ID=1 θ_guard=0.3 incremental LR tweak after baseline
+51ec902	1.168656	22.6	keep	EMBEDDING_LR 0.6 to 0.63	0.000	GUARD	δ=0 S=0 RR=0 ID=1 three keeps; +5pct token embed Adam LR
+b896ec6	0.000000	0.0	crash	UNEMBEDDING_LR +5% run ended before eval	0.200	GUARD	no val_bpb in log; wall-clock dt negative spikes broke time budget; reverted to 51ec902
+5a266bb	1.149207	22.6	keep	perf_counter step dt + UNEMBEDDING_LR 0.0042	0.200	GUARD	δ=0.2 S=0.25 RR=0.25 ID=1.0 θ_guard=0.3; monotonic timing + lm_head +5% retry after crash
+f75543e	1.149148	22.6	keep	SCALAR_LR 0.5 to 0.525 (+5% resid/x0 Adam)	0.160	GUARD	δ=0.16 S=0.2 RR=0.2 ID=1.0 θ_guard=0.3; incremental scalar LR after stable GUARD streak
+d3de0d3	1.148364	22.6	keep	MATRIX_LR 0.044 to 0.0462 (+5% Muon)	0.133	GUARD	δ=0.133 S=RR=1/7 ID=1 θ_guard=0.3; follow-on Muon LR after scalar win
+89806be	1.148580	22.6	discard	EMBEDDING_LR 0.63 to 0.65	0.200	GUARD	δ=0.2 S=RR=2/8 ID=1; val_bpb worse than 1.148364; reset to d3de0d3
+065afd5	1.161508	22.1	discard	remove resid_lambdas x0_lambdas standard residual	0.345	SIMPLIFY	δ≈0.35 S=0.25 RR=0.25 ID≈0.27 θ_guard=0.3 θ_break=0.7; mid-band SIMPLIFY; val_bpb worse than 1.148364; reset d3de0d3
+b708ee7	1.140848	20.6	keep	remove logits softcap raw lm_head output	0.412	SIMPLIFY	δ≈0.41 S=RR=1/3 ID≈0.27 θ_guard=0.3 θ_break=0.7; mid-band SIMPLIFY; val_bpb improved vs 1.148364
+1370535	1.139637	20.6	keep	MATRIX_LR 0.0462 to 0.0480 (+3.9% Muon)	0.240	GUARD	δ=0.24 S=0.3 RR=0.3 ID=1 θ_guard=0.3; incremental Muon LR; improved vs 1.140848
+1c3837c	1.139637	20.6	discard	SCALAR_LR 0.525 to 0.537 (+2.3% resid/x0 Adam)	0.240	GUARD	δ=0.24 GUARD; val_bpb tied best 1.139637; reset to 1370535
+0e8e5b7	1.151044	20.6	discard	fixed Muon momentum 0.95 remove step ramp	0.320	SIMPLIFY	δ=0.32 θ_guard≤δ≤θ_break; code- SIMPLIFY; val_bpb worse vs 1.139637; reset to 1370535
+9516fad	1.140069	20.6	discard	merge init_weights loops + VE bf16 in one pass	0.539	SIMPLIFY	δ=0.539 S=RR=0.5 ID≈0.31 θ_guard=0.3 θ_break=0.7 mid-band; refactor -9 lines; val_bpb worse than 1.139637; reset 1370535
+7902874	1.139384	20.6	keep	ve_gate input channels 32 to 16	0.600	SIMPLIFY	δ=0.60 mid-band SIMPLIFY; fewer gate params; val_bpb improved vs 1.139637; keep
+562892d	1.139384	20.5	discard	unify muon polar-express loop; LR warmup branch clarity	0.576	SIMPLIFY	δ≈0.576 S=RR=0.5 ID≈0.12 θ_guard=0.3 θ_break=0.7 mid-band; val_bpb tied best; reset 7902874
+3fb26ef	1.665443	20.5	discard	remove asdict; print GPTConfig repr	0.651	SIMPLIFY	δ≈0.651 S=RR=0.6 ID≈0.15 mid-band; val_bpb worse than log best 1.139384; reset 7902874
+1e9b4ca	1.116324	20.7	keep	SwiGLU MLP replace ReLU^2 FFN	0.724	BREAK	δ≈0.724>θ_break 0.7; S=RR=0.7 ID≈0.18; silu(gate)*up FFN; val_bpb improved vs 1.139384
+90a31dc	1.118931	20.7	discard	fused w_gate_up Linear for SwiGLU	0.588	SIMPLIFY	δ≈0.59 θ_guard≤δ≤θ_break; fused gate+up; val_bpb worse than 1.116324; reset 1e9b4ca
+ce4099b	1.116498	20.7	discard	drop asdict use config repr in print	0.588	SIMPLIFY	δ mid-band; no-train change; val_bpb 1.116498>1.116324; reset 1e9b4ca
+693206d	1.370434	20.2	discard	GQA n_kv_head max(1,n_head//2)	0.760	BREAK	δ=0.76>θ_break 0.7; half KV heads; val_bpb worse vs 1.116324; reset 1e9b4ca
+cc5c805	0.000000	0.0	crash	RoPE base 500000 train killed before eval	0.840	BREAK	δ=0.84 BREAK; process exited mid-run twice no val_bpb; reset 1e9b4ca
+9741b86	1.564573	20.7	discard	cudnn.benchmark True fixed-shape steps	0.840	BREAK	δ=0.84 BREAK; val_bpb catastrophic vs 1.116324; reset 1e9b4ca
+52a66d4	1.116204	20.7	keep	WINDOW_PATTERN LLLL full attention all layers	0.840	BREAK	δ=0.84>θ_break; LLLL vs SSSL; val_bpb 1.116204 improved vs 1.116324; keep
+d293ca4	1.116550	20.7	discard	unify polar-express loop; drop asdict print	0.660	SIMPLIFY	δ≈0.66 θ_guard≤δ≤θ_break mid-band SIMPLIFY -5 lines; val_bpb 1.116550>1.116204 vs best; reset 52a66d4
+6e729ad	1.122258	22.7	discard	SwiGLU FFN hidden 5x n_embd was 4x	0.691	BREAK	δ≈0.69>θ_break 0.7; more FFN capacity; val_bpb worse vs 1.116204; VRAM +2GB; reset 52a66d4
+b4b907a	0.000000	0.0	crash	torch.compile(model) SM12 run killed mid-train no val_bpb	0.840	BREAK	δ=0.84>θ_break; compile unstable/recompile stalls on Blackwell; reset 52a66d4
+881a421	1.154001	13.9	discard	DEPTH 9 n_embd 640 DEVICE_BATCH 16 same token batch	0.840	BREAK	δ=0.84 BREAK; val_bpb 1.154>best 1.116204; reset 52a66d4
+5549d00	1.150139	24.5	discard	ASPECT_RATIO 72 n_embd 640 at depth 8	0.920	BREAK	δ≈0.92 BREAK; val_bpb 1.150>1.116204; peak VRAM +10GB vs best; reset 52a66d4
+55dfddf	1.118160	20.7	discard	MLP GEGLU (gelu gate) replace SwiGLU	0.918	BREAK	δ≈0.918 S=RR=0.9 ID≈0.008 θ_break=0.7; val_bpb 1.118160>1.116204; reset 52a66d4
+68205eb	1.195407	20.7	discard	TOTAL_BATCH_SIZE 2^19 to 2^20 grad_accum 16	0.918	BREAK	δ≈0.918 BREAK; val_bpb 1.195>>1.116204; reset 52a66d4
+81fa8f6	1.113659	20.7	keep	WARMDOWN_RATIO 0.40 FINAL_LR_FRAC 0.08 LR tail schedule	0.918	BREAK	δ=0.918 S=0.9 RR=0.9 ID≈0.009 θ_break=0.7; plateau+cosine floor 8% vs 0; val_bpb improved vs 1.116204
+07d0ede	1.128357	20.7	discard	WARMUP_RATIO 0.05 linear LR warmup first 5% budget	0.820	BREAK	δ≈0.820 S=0.8 RR=0.8 ID≈0.10 θ_break=0.7; val_bpb worse vs 1.113659; reset 81fa8f6
+10927c6	1.129926	20.7	discard	train-only LABEL_SMOOTHING 0.05 eval hard CE	0.820	BREAK	δ≈0.820 same window; val_bpb 1.129926>1.113659; reset 81fa8f6
+9cb4f83	1.131047	20.7	discard	HEAD_DIM 64 (8 heads) vs 128 at n_embd 512	0.920	BREAK	δ=0.92>θ_break; more heads; val_bpb 1.131047>1.113659 best; reset 81fa8f6
+6449a01	1.119685	21.2	discard	RESID_DROPOUT 0.05 on attn and mlp branches (train-only)	0.700	BREAK	δ≈0.70≥θ_break; commit existed ahead of log; val_bpb 1.119685>best 1.113659; reset 81fa8f6
+1400bba	1.744427	40.6	discard	DEVICE_BATCH_SIZE 32 to 64 grad_accum 8 to 4 same TOTAL_BATCH	0.700	BREAK	δ≈0.70 BREAK; microbatch 2x slowed steps ~230→38 in 300s wall; val_bpb catastrophic; VRAM spike; reset 81fa8f6
+0e42bcb	1.144577	24.4	discard	ASPECT_RATIO 65 n_embd 640 (depth*65→640 dim)	0.702	BREAK	δ≈0.702>θ_break 0.7 S=0.9 RR=0.9 ID≈1.09; wider model; val_bpb 1.144577>best 1.113659; reset 81fa8f6
+5188ca4	1.114173	20.7	discard	FINAL_LR_FRAC 0.08 to 0.05 lower cosine tail	0.702	BREAK	δ≈0.702>θ_break; val_bpb 1.114173>best 1.113659; reset 81fa8f6
+6fe451e	1.114173	20.7	discard	WARMDOWN_RATIO 0.40 to 0.45 longer plateau	0.702	BREAK	δ≈0.702>θ_break; val_bpb 1.114173>best 1.113659 (tie prev run); reset 81fa8f6
+468a7bf	1.118400	20.7	discard	Muon ns_steps 5 to 4 polar express	0.702	BREAK	δ≈0.702>θ_break; val_bpb 1.118400>best 1.113659; reset 81fa8f6
+fa6b6e2	1.118400	20.7	discard	tie lm_head.weight to wte; drop separate lm_head Adam	1.000	BREAK	δ=1.0 S=RR=1.0 last10 no keep ID=0; params 58.7M; val_bpb 1.118400>1.113659; reset 81fa8f6
+b34db8c	1.113745	20.7	discard	GRAD_CLIP_NORM 1.0 before MuonAdam step	1.000	BREAK	δ=1 S=RR=1 ID=0 θ_break=0.7; post-accum global clip; val_bpb 1.113745>best 1.113659; reset 81fa8f6
+88c6f29	1.112969	20.7	keep	FINAL_LR_FRAC 0.08 to 0.12 (higher cosine tail floor)	1.000	BREAK	δ=1 S=RR=1 ID=0 θ_break=0.7; end-schedule floor helps late training; val_bpb 1.112969<prev best 1.113659; advance
+2d922a9	1.113775	20.7	discard	WEIGHT_DECAY 0.2 to 0.17 (Muon base WD)	0.909	BREAK	δ≈0.909>θ_break; lower WD hurt generalization vs best 1.112969; reset 88c6f29
+0fc7fee	1.112968	20.7	keep	RoPE base 10k to 50k (ROPE_BASE constant)	0.920	BREAK	δ=0.92 S=0.9 RR=0.9 ID=0 θ_break=0.7; val_bpb 1.112968<1.112969 prior best; advance
+b8a60e2	1.110575	19.6	keep	SwiGLU FFN hidden 3.5x n_embd (was 4x)	0.840	BREAK	δ=0.84 S=0.8 RR=0.8 ID=0 θ_break=0.7; val_bpb 1.110575 vs 1.112968; advance
+af42f46	1.110106	19.6	keep	RoPE base 50k to 100k	0.840	BREAK	δ=0.84>θ_break; val_bpb 1.110106<1.110575; advance
+12cc3d8	1.110251	19.6	discard	compact build_model_config; drop asdict; remove stale compile comment	0.664	SIMPLIFY	δ=0.664 θ_guard≤δ≤θ_break; S=RR=0.6 ID≈0.082; −6 LOC no-behavior change; val_bpb 1.110251>1.110106; reset af42f46
+ADAPT	0.000000	0.0	adapt	parameter adaptation at iter 50	0.000	ADAPT	θ_guard: 0.3→0.3; θ_break: 0.7→0.7 | table: [0,0.2) G 4/4k [0.2,0.4) G 2/5k [0.6,0.8) B 1/9k [0.8,1) B 6/19k; no δ-bin with ≥3 GUARD and ≥3 BREAK jointly; keep prior thresholds per protocol
+d25b53d	1.110290	19.6	discard	inline Muon momentum + weight decay; drop helper fns	0.664	SIMPLIFY	δ=0.664 mid-band post-ADAPT; −6 LOC equiv schedules; val_bpb 1.110290>1.110106; reset af42f46
+b8fefd1	1.110522	19.6	discard	merge VE gate zero-init into block loop; drop unused startup_time	0.680	SIMPLIFY	δ=0.68 S=RR=0.6 ID=0 θ_guard=0.3 θ_break=0.7 mid-band; val_bpb 1.110522>1.110106; reset af42f46
+798b8e4	1.110522	19.6	discard	remove unused startup_time and stale torch.compile comment only	0.680	SIMPLIFY	δ=0.68 mid-band; dead-code only repro 1.110522 vs log best 1.110106; reset af42f46
+9c7a0bd	1.561230	19.6	discard	strip banners/hyperparam comments; dead code (ΔC<0 vs 628)	0.680	SIMPLIFY	comment-only SIMPLIFY; run had ~59 steps/300s (slow dt ~5–8s) not comparable; val_bpb catastrophic vs 1.110106; reset af42f46
+8a5be35	1.110351	19.6	discard	remove dead t_start_training/startup_time; print GPTConfig without asdict	0.661	SIMPLIFY	δ=0.661 θ_guard≤δ≤θ_break; −3 LOC no-behavior intent; val_bpb 1.110351>1.110106; reset af42f46
+6c84232	1.110289	19.6	discard	remove top module docstring only	0.661	SIMPLIFY	δ=0.661 mid-band SIMPLIFY −6 LOC zero runtime; val_bpb 1.110289>1.110106; reset af42f46
+e350cd7	1.109539	19.6	keep	MATRIX_LR 0.0480 to 0.0520 (Muon)	0.760	BREAK	δ=0.76 S=RR=0.7 ID=0; last3 SIMPLIFY discard escape→BREAK; val_bpb improved vs 1.110106
+4438184	1.109646	19.6	discard	ROPE_BASE 100000 to 95000	0.760	BREAK	δ=0.76>θ_break; val_bpb 1.109646>best 1.109539; reset e350cd7
+0c658e2	1.119651	18.6	discard	parallel block shared pre-norm attn+mlp (GPT-J style)	0.840	BREAK	δ=0.84>θ_break 0.7 S=0.8 RR=0.8 ID=0; val_bpb 1.119651>best 1.109539; reset e350cd7
+d7674b1	1.109355	19.6	keep	ROPE_BASE 100000 to 105000	0.920	BREAK	δ=0.92>θ_break 0.7; RoPE θ slightly up vs 100k; val_bpb 1.109355<1.109539 prior best; advance
+b5fcdc5	1.109588	19.6	discard	ROPE_BASE 105000 to 110000	0.920	BREAK	δ=0.92>θ_break; 110k worse than 105k best 1.109355; reset d7674b1
+cb1aea6	1.109304	19.6	keep	Muon polar-express ns_steps 5 to 6	0.840	BREAK	δ=0.84>θ_break 0.7 S=0.8 RR=0.8 ID=0; stronger Muon orthogonalization; val_bpb improved vs 1.109355
+bbb8b1e	1.109592	19.6	discard	FINAL_LR_FRAC 0.12 to 0.14 (cosine tail)	0.840	BREAK	δ=0.84>θ_break; tail floor hurt vs best 1.109304; reset cb1aea6
+16faca3	1.115427	19.7	discard	EMBED_DROPOUT 0.05 after wte (train-only)	0.760	BREAK	δ=0.76>θ_break 0.7 S=RR=0.7 ID=0; embed dropout worse vs best 1.109304; reset cb1aea6
+86dd016	1.109608	19.6	discard	enable CUDA/cuDNN TF32 matmul	0.760	BREAK	δ=0.76>θ_break; TF32 val_bpb 1.109608>best 1.109304; reset cb1aea6
+b6e1938	1.109404	19.6	discard	ROPE_BASE 105000 to 102500	0.754	BREAK	δ≈0.75>θ_break 0.7 S=0.7 RR=0.7 ID≈0.03; RoPE nudge toward 100k; val_bpb 1.109404>best 1.109304; reset cb1aea6
+ba2c237	1.109154	19.6	keep	MATRIX_LR 0.0520 to 0.0535 (+2.9% Muon)	0.760	BREAK	δ=0.76 S=0.7 RR=0.7 ID=0 θ_break=0.7; incremental Muon LR after discard streak; val_bpb 1.109154<1.109304; advance
+4ba230d	1.109012	19.6	keep	ROPE_BASE 105000 to 106000	0.758	BREAK	δ≈0.758>θ_break 0.7; deferred train+log; val_bpb 1.109012<1.109154; advance
+f4f2947	1.109135	19.6	discard	remove unused t_start_training and startup_time	0.677	SIMPLIFY	θ_guard≤δ≤θ_break mid-band; dead timing vars only; val_bpb 1.109135>best 1.109012; reset 4ba230d
+7ade34f	1.107837	19.6	keep	SIMPLIFY merge VE/gate init; trim comments; print config without asdict	0.677	SIMPLIFY	δ≈0.677 θ_guard≤δ≤θ_break; −12 LOC vs 647; val_bpb 1.107837<1.109012; advance
+62962a8	1.107570	19.6	keep	remove section banner comment blocks only	0.670	SIMPLIFY	δ≈0.670 mid-band; −20 LOC vs 635; val_bpb 1.107570<1.107837; advance
+2e3073e	1.107361	19.6	keep	SDPA trim when n_kv=n_head; compact param print; drop dead timing vars	0.590	SIMPLIFY	δ=0.59 S=RR=0.5 ID≈0.05 θ_guard≤δ≤θ_break mid-band SIMPLIFY; −12 LOC; val_bpb 1.107361<1.107570; advance
+bf72aaa	1.191783	19.6	discard	compress _compute_window_sizes; drop MuonAdamW/estimate_flops docstrings	0.589	SIMPLIFY	δ≈0.589 mid-band SIMPLIFY; catastrophic val_bpb vs 1.107361 (likely interaction with compile/schedules); reset 2e3073e
+cb506c4	1.107679	19.6	discard	drop estimate_flops/MuonAdamW docstrings; remove SDPA comment	0.589	SIMPLIFY	δ≈0.589 θ_guard≤δ≤θ_break mid-band SIMPLIFY −4 LOC no-behavior; val_bpb 1.107679>best 1.107361; reset 2e3073e
+3d93cc2	1.107677	19.6	discard	collapse module docstring to one line	0.588	SIMPLIFY	δ≈0.588 S=RR=0.5 ID≈0.063 θ_guard≤δ≤θ_break mid-band SIMPLIFY; val_bpb 1.107677>best 1.107361; last3 SIMPLIFY discard→next BREAK
+53645ae	1.107677	19.6	discard	MATRIX_LR 0.0535 to 0.0542	0.668	BREAK	δ≈0.668 S=0.6 RR=0.6 ID≈0.06; SIMPLIFY×3 discard escape→BREAK; val_bpb 1.107677≥best 1.107361; reset 2e3073e
+9505b60	1.107371	19.6	discard	inline build_model_config at single call site	0.600	SIMPLIFY	δ=0.6 S=0.5 RR=0.5 ID=0 θ_guard≤δ≤θ_break mid-band; val_bpb 1.107371>1.107361; reset 2e3073e
+690d6d8	1.152455	19.6	discard	hoist head_dim in init_weights; flatten get_lr multiplier branches	0.665	SIMPLIFY	δ=0.665 θ_guard≤δ≤θ_break mid-band; equiv LR schedule; val_bpb 1.152455>>log best 1.107361; reset e0993f0
+744f647	1.107345	19.6	keep	MATRIX_LR 0.0535 to 0.0550 (+2.8% Muon)	0.753	BREAK	δ=0.753>θ_break 0.7 S=0.7 RR=0.7 ID≈0.033; incremental Muon LR; val_bpb 1.107345<1.107361 prior best; advance
+f89711b	1.107415	19.6	discard	hoist head_dim in init_weights; drop duplicate rotary lines	0.680	SIMPLIFY	δ≈0.68 S=RR=0.6 ID=0 θ_guard=0.3 θ_break=0.7 mid-band SIMPLIFY; equiv init; val_bpb 1.107415>best 1.107345; reset 744f647
+978ec1a	1.107415	19.6	discard	ROPE_BASE 106000 to 108000	0.760	BREAK	δ=0.76>θ_break 0.7 S=RR=0.7 ID=0; val_bpb 1.107415>best 1.107345; reset 744f647
+11630f2	1.107415	19.6	discard	MATRIX_LR 0.0550 to 0.0562 (+2.2% Muon)	0.840	BREAK	δ=0.84>θ_break 0.7 S=RR=0.8 ID=0; val_bpb 1.107415>best 1.107345; reset 744f647
+f2d5428	1.107415	19.6	discard	ROPE_BASE 106000 to 104500	0.920	BREAK	δ=0.92>θ_break 0.7 S=RR=0.9 ID=0; val_bpb 1.107415>best 1.107345; reset 744f647
+c9b75f7	1.107415	19.6	discard	UNEMBEDDING_LR 0.0042 to 0.0040	0.920	BREAK	δ≈0.92>θ_break 0.7; val_bpb 1.107415>best 1.107345; reset 744f647
+ebe4d6d	1.107610	19.6	discard	ve_gate channels 16 to 24	0.920	BREAK	δ≈0.92>θ_break 0.7; val_bpb 1.107610>best 1.107345; reset 744f647
+1f9737c	1.106554	19.6	keep	ADAM_BETAS beta1 0.8 to 0.75	0.920	BREAK	δ≈0.92>θ_break 0.7; lower AdamW beta1; val_bpb 1.106554<1.107345 prior best; advance
+8dba5da	1.106291	19.6	keep	EMBEDDING_LR 0.63 to 0.648 (+2.9%)	0.827	BREAK	δ≈0.827>θ_break 0.7; embed Adam LR nudge; val_bpb 1.106291<1.106554; advance
+4ed699c	1.106570	19.6	discard	UNEMBEDDING_LR 0.0042 to 0.00432 (+2.9%)	0.760	BREAK	δ=0.76>θ_break 0.7; lm_head Adam LR +2.9%; val_bpb 1.106570>best 1.106291; reset 8dba5da
+a998413	1.106620	19.6	discard	ROPE_BASE 106000 to 106500 (+0.47%)	0.760	BREAK	δ=0.76>θ_break; small RoPE ω bump; val_bpb 1.106620>best 1.106291; reset 8dba5da
+6b8eff7	1.112260	20.7	discard	SwiGLU FFN hidden 4x n_embd (was 3.5x)	0.840	BREAK	δ=0.84>θ_break 0.7 S=0.8 RR=0.8 ID=0; larger FFN capacity; val_bpb 1.112260>best 1.106291; reset 8dba5da
+7995feb	1.106470	19.6	discard	Muon momentum ramp terminal 0.95 to 0.96	0.840	BREAK	δ=0.84>θ_break 0.7; higher steady Muon momentum; val_bpb 1.106470>best 1.106291; reset 8dba5da
+56b84ac	1.106430	19.6	discard	Muon polar-express ns_steps 6 to 7	0.823	BREAK	δ≈0.823>θ_break 0.7 S=0.8 RR=0.8 ID≈0.086; heavier Muon orthogonalization; val_bpb 1.106430>best 1.106291; reset 8dba5da
+8046574	1.107749	19.6	discard	AdamW beta2 0.95 to 0.98 (ADAM_BETAS)	0.823	BREAK	δ≈0.823>θ_break 0.7; slower AdamW v on embed/lm_head/resid; val_bpb 1.107749>best 1.106291; reset 8dba5da
+592545b	1.106792	19.6	discard	WARMDOWN_RATIO 0.40 to 0.38 (longer high-LR plateau)	0.840	BREAK	δ=0.84>θ_break 0.7 S=0.8 RR=0.8 ID=0; val_bpb 1.106792>best 1.106291; reset 8dba5da
+53d6d1b	1.106431	19.6	discard	WEIGHT_DECAY 0.2 to 0.215 (+7.5% Muon base WD)	0.840	BREAK	δ=0.84>θ_break 0.7; stronger Muon WD; val_bpb 1.106431>best 1.106291; reset 8dba5da
+a494dd7	1.106160	19.6	keep	WARMDOWN_RATIO 0.40 to 0.42 (earlier LR cooldown)	0.840	BREAK	δ=0.84>θ_break 0.7; earlier warmdown; val_bpb 1.106160<1.106291 prior best; advance
+df10138	1.100304	18.0	keep	DEPTH 7 ASPECT_RATIO 73 same 512-dim 4-head one fewer layer	0.836	BREAK	δ=0.836>θ_break 0.7 S=0.8 RR=0.8 ID≈0.021; 7L vs 8L val_bpb 1.100304<1.106160 prior best; advance
+3d1170d	1.100304	18.0	discard	compact _compute_window_sizes list comprehension	0.649	SIMPLIFY	δ=0.649 θ_guard≤δ≤θ_break; equiv windows; val_bpb tied 1.100304 vs best; reset df10138
+d7b3f52	1.100304	18.0	discard	merge attention shape asserts one line	0.649	SIMPLIFY	δ=0.649 mid-band; assert only; val_bpb tied 1.100304; reset df10138
+5253e88	1.100304	18.0	discard	get_lr_multiplier warmdown var rename c	0.649	SIMPLIFY	δ=0.649 mid-band; math-equiv schedule; val_bpb tied 1.100304; reset df10138
+8086587	1.100304	18.0	discard	MATRIX_LR 0.055 to 0.0565 forced BREAK escape	0.649	BREAK	SIMPLIFY×3 discard escape; Muon +2.7%; val_bpb tied best 1.100304; reset df10138
+ADAPT	0.000000	0.0	adapt	parameter adaptation at iter 100	0.000	ADAPT	θ_guard: 0.3→0.3; θ_break: 0.7→0.8 | bins: [0,0.2) G 4/4k [0.2,0.4) G 2/5k [0.6,0.8) B 5/21k [0.8,1) B 12/38k; θ_break raised where BREAK mass lives and GUARD sparse; clamp ok
+3d8fa99	1.381951	18.0	discard	inline value_embeds in estimate_flops (-1 LOC)	0.649	SIMPLIFY	δ=0.649 θ_guard≤δ≤θ_break; math-equiv SIMPLIFY; val_bpb catastrophic vs best 1.100304 (parallel train.py on GPU); reset df10138
+c6dd3d4	1.100162	18.0	keep	get_lr_multiplier return cooldown+(1-cooldown)*FINAL_LR_FRAC	0.649	SIMPLIFY	δ=0.6492 θ_guard≤δ≤θ_break; math-equiv schedule expr; val_bpb 1.100162<1.100304 prior best; advance
+b3d9928	1.100166	18.0	discard	explicit WARMUP_RATIO>0 branch in get_lr_multiplier	0.659	SIMPLIFY	δ=0.6589 θ_guard≤δ≤θ_break; equiv when WARMUP=0; val_bpb 1.100166>1.100162 best; reset c6dd3d4
+9a8e0a2	1.100359	18.0	discard	get_lr_multiplier explicit warmup guard + short tail var c	0.691	SIMPLIFY	δ=0.6911 S=RR=0.7 ID=0.3445 θ_guard=0.3 θ_break=0.8 mid-band; math-equiv −1 LOC; val_bpb 1.100359>1.100162 best; reset c6dd3d4
+b43dbd7	1.100264	18.0	discard	merge import gc math time single line	0.691	SIMPLIFY	δ≈0.69 mid-band SIMPLIFY −2 LOC zero runtime; val_bpb 1.100264>1.100162 best; reset c6dd3d4
+a7da502	1.101067	18.0	discard	MATRIX_LR 0.055 to 0.0565 (+2.7% Muon)	0.691	BREAK	δ≈0.69 SIMPLIFY×3 discard escape→BREAK; val_bpb 1.101067>1.100162 best; reset c6dd3d4
+5afa5b6	1.100052	18.0	keep	WINDOW_PATTERN SSSS (1024 win layers 0-5, full last)	0.920	BREAK	δ=0.92 S=0.9 RR=0.9 ID=0 θ_break=0.8; banded local attention; val_bpb 1.100052<1.100162 prior best; advance
+76c303f	1.622336	18.0	discard	WINDOW_PATTERN LSSL alternating long/short	0.836	BREAK	δ=0.836>θ_break 0.8; ~48 steps/300s MFU~1.7% val_bpb catastrophic vs 1.100052; reset 5afa5b6
+131e10e	1.106702	19.6	discard	DEPTH 8 ASPECT_RATIO 64 same n_embd 512	0.836	BREAK	δ=0.836>θ_break 0.8; eight layers vs seven val_bpb 1.106702>1.100052 best; reset 5afa5b6
+4c00675	1.107719	18.0	discard	full-budget cosine LR multiplier (no plateau+warmdown)	0.836	BREAK	δ=0.836>θ_break 0.8; cosine 1→FINAL_LR_FRAC over 300s; val_bpb 1.107719>1.100052 best; reset 5afa5b6
+f904713	1.100713	18.0	discard	RMSNorm Q/K before RoPE (order swap)	0.836	BREAK	δ=0.836>θ_break 0.8; pre-RoPE QK norm; val_bpb 1.100713>1.100052; reset 5afa5b6
+11aad9a	1.100713	18.0	discard	attention QKV+c_proj bias True zero-init	0.836	BREAK	δ=0.836>θ_break 0.8; val_bpb 1.100713>1.100052; reset 5afa5b6
+b23842c	1.100280	18.0	discard	WINDOW_PATTERN SSLSS mid-layer long window	0.920	BREAK	δ=0.92>θ_break 0.8; SSLSS vs SSSS; val_bpb 1.100280>1.100052; reset 5afa5b6
+1586fa3	1.166855	18.0	discard	post-LayerNorm block (residual then RMSNorm x2)	0.920	BREAK	δ=0.92>θ_break 0.8; post-LN hurt badly vs pre-LN stack; val_bpb 1.166855>>1.100052; reset 5afa5b6
+d98e17e	1.100233	18.0	discard	WINDOW_PATTERN SSSL vs SSSS (one mid-stack full attn)	0.920	BREAK	δ=0.92 S=0.9 RR=0.9 ID=0 θ_break=0.8; SSSL run val_bpb 1.100233>best 1.100052; reset 5afa5b6
+f58d5e8	1.100413	18.0	discard	short window seq//3 vs seq//2 for S layers	0.920	BREAK	δ=0.92>θ_break 0.8; tighter local windows; val_bpb 1.100413>best 1.100052; reset 5afa5b6
+784b7b2	1.102869	18.5	discard	SwiGLU FFN hidden 3.75x n_embd (was 3.5x)	0.920	BREAK	δ=0.92>θ_break 0.8; +params/VRAM; val_bpb 1.102869>best 1.100052; reset 5afa5b6
+31585c2	1.138268	22.6	discard	MLP ReLU^2 gate x up replace SwiGLU silu	0.920	BREAK	δ=0.92>θ_break 0.8; slower steps ~1.47s; val_bpb 1.138268>>best 1.100052; reset 5afa5b6
+cf04511	1.120316	17.6	discard	remove value embeddings and VE gates (plain v)	1.000	BREAK	δ=1.0 S=1 RR=1 ID=0 θ_guard=0.3 θ_break=0.8; fewer params ~35.0M; val_bpb 1.120316>best 1.100052; reset 5afa5b6
+ced8621	1.100443	18.0	discard	short attention window 2/3 seq (S layers) vs half	1.000	BREAK	δ=1.0 S=RR=1 ID=0 θ_break=0.8; clean single run run_iter122_clean.log; val_bpb 1.100443>best 1.100052; reset 5afa5b6
+05f3de8	1.097831	16.3	keep	DEPTH 6 ASPECT_RATIO 85 same n_embd 512 six layers	1.000	BREAK	δ=1.0 S=RR=1 ID=0 θ_break=0.8; shallower depth matched 300s budget; val_bpb 1.097831<1.100052 prior best; advance
+8acd88e	1.097674	16.3	keep	WINDOW_PATTERN LLLL full attention depth 6 vs SSSS	0.870	BREAK	δ≈0.87>θ_break 0.8 S=0.9 RR=0.9; global causal attn each layer; val_bpb 1.097674<1.097831; advance
+bd12249	0.000000	0.0	crash	SIMPLIFY docstrings and section comments only	0.795	SIMPLIFY	δ=0.795 θ_guard≤δ≤θ_break 0.3–0.8; process ended ~step101 no val_bpb in run.log; reset 8acd88e
+6a05c52	1.263769	16.3	discard	inline has_ve at two call sites	0.795	SIMPLIFY	δ=0.795 mid-band SIMPLIFY; val_bpb 1.263769>>best 1.097674; run.log ~3s/step vs ~1s baseline fewer steps in 300s; reset 8acd88e
+b6bbd81	1.098812	16.9	discard	ATTN_DROPOUT 0.02 on attn output before c_proj	0.840	BREAK	δ=0.84>θ_break 0.8 S=RR=0.8 ID=0; train-only attn dropout; val_bpb 1.098812>1.097674 best; reset 8acd88e
+5d05904	1.097775	16.3	discard	WARMDOWN_RATIO 0.42 to 0.41 longer high-LR plateau	0.840	BREAK	δ=0.84>θ_break 0.8; schedule tweak; val_bpb 1.097775>1.097674 best; reset 8acd88e
+d86bb59	0.000000	0.0	crash	one-line polar coeffs + nn.init in init_weights	0.795	SIMPLIFY	δ=0.795 θ_guard≤δ≤θ_break 0.3–0.8 mid-band SIMPLIFY; executor timeout mid-train ~step58 no val_bpb; reset 8acd88e
+5ac6520	1.097697	16.3	discard	one-line polar coeffs + nn.init in init_weights (full run)	0.795	SIMPLIFY	δ=0.795 θ_guard≤δ≤θ_break 0.3–0.8; equiv refactor; val_bpb 1.097697>best 1.097674; reset 8acd88e
+8a0fc62	1.097830	16.3	discard	drop estimate_flops and MuonAdamW docstrings	0.795	SIMPLIFY	δ=0.795 mid-band SIMPLIFY −3 LOC zero runtime; val_bpb 1.097830>best 1.097674; reset 8acd88e
+fcbf2db	1.116337	20.3	discard	PaLM z-loss on logsumexp(logits) coef 1e-4	0.834	BREAK	δ=0.834>θ_break 0.8 S=0.8 RR=0.8 ID≈0.029; training regularizer hurt val_bpb vs best 1.097674; reset 8acd88e
+4850f07	1.113111	17.6	discard	HEAD_DIM 96 → n_embd 576 n_head 6 (depth 6)	0.834	BREAK	δ=0.834>θ_break 0.8; attention geometry/capacity change; val_bpb 1.113111>best 1.097674; reset 8acd88e
+c419395	1.097281	16.3	keep	AdamW beta1 0.75 to 0.72 (ADAM_BETAS)	0.920	BREAK	δ=0.92>θ_break 0.8 S=0.9 RR=0.9 ID=0; faster AdamW m on non-Muon params; val_bpb 1.097281<1.097674 prior best; advance
+8d5ce4d	0.000000	0.0	crash	DEPTH 5 ASPECT_RATIO 102 n_embd 512 4-head	0.905	BREAK	δ≈0.905>θ_break 0.8 S=0.9 RR=0.9 ID≈0.076; no reliable val_bpb (MCP cmd wall limits; overlapping train.py runs garbled logs); reset c419395
+5240bbf	0.000000	0.0	crash	ASPECT_RATIO 85 to 88 n_embd 640 DEVICE_BATCH 32	0.905	BREAK	δ=0.905>θ_break 0.8; mid-train abort ~step12 no val_bpb in run.log; reset c419395
+ebba145	1.117951	9.8	discard	ASPECT_RATIO 88 n_embd 640 DEVICE_BATCH 16 grad_accum 16	0.905	BREAK	δ=0.905>θ_break 0.8; full 300s run val_bpb 1.117951 vs best 1.097281; reset c419395
+10694c5	1.097774	16.3	discard	AdamW beta1 0.72 to 0.70 (ADAM_BETAS)	0.905	BREAK	δ≈0.905>θ_break 0.8 S=0.9 RR=0.9 ID≈0.076; val_bpb 1.097774>best 1.097281; reset c419395
+42a1093	1.097310	16.3	discard	WARMDOWN_RATIO 0.42 to 0.43 (longer LR plateau)	0.905	BREAK	δ≈0.905>θ_break 0.8; val_bpb 1.097310>best 1.097281; reset c419395
+b8e1eab	1.097754	16.3	discard	FINAL_LR_FRAC 0.12 to 0.115 (lower cosine floor)	0.905	BREAK	δ≈0.905>θ_break 0.8; val_bpb 1.097754>best 1.097281; reset c419395
+da6fc0a	0.000000	0.0	crash	SwiGLU FFN hidden 3.5x to 3.25x (13/4 n_embd)	0.881	BREAK	δ=0.881>θ_break 0.8 S=0.9 RR=0.9 ID≈0.196; train killed ~step58 no val_bpb (nohup/MCP); reset c419395
+44bdfa6	1.097483	15.9	discard	SwiGLU FFN 3.5x to 3.25x screen full run	0.881	BREAK	δ=0.881>θ_break 0.8; val_bpb 1.097483>best 1.097281; reset c419395
+c5d2b03	1.121277	16.5	discard	SwiGLU FFN 3.5x to 3.6x (18/5 n_embd)	0.881	BREAK	δ≈0.88>θ_break 0.8; wider FFN slower step ~1.27s val_bpb 1.121277>>1.097281; reset c419395
+e6036b5	1.097794	16.3	discard	WINDOW_PATTERN SSSS depth6 short windows last layer full	0.905	BREAK	δ=0.905>θ_break 0.8 S=RR=0.9 ID≈0.076; vs LLLL val_bpb 1.097794>best 1.097281; reset c419395
+3f1cffa	0.000000	0.0	crash	Muon polar-express ns_steps 6 to 7	1.000	BREAK	δ=1.0 S=RR=1.0 last10 ID=0 θ_break=0.8; train died ~step15 no val_bpb (run_i146.log); reset c419395
+88d9d7a	1.097145	16.3	keep	ve_gate input channels 16 to 12	1.000	BREAK	δ=1.0>θ_break 0.8 S=RR=1.0 ID=0; narrower VE gate inputs; val_bpb 1.097145<1.097281 prior best; advance
+f487b74	1.097131	16.3	keep	MATRIX_LR 0.0550 to 0.0565 (+2.7% Muon)	0.920	BREAK	δ≈0.92>θ_break 0.8 S=0.9 RR=0.9 ID=0; Muon matrix LR bump; val_bpb 1.097131<1.097145 prior best; advance
+67d0200	0.000000	0.0	crash	ROPE_BASE 106000 to 101500	0.840	BREAK	δ=0.84>θ_break 0.8; MCP executor 600s wall timeout mid-train no val_bpb; reset f487b74
+48217da	1.097616	16.3	discard	ROPE_BASE 106000 to 101500 (solo log)	0.840	BREAK	δ=0.84>θ_break 0.8; run_iter147_solo.log full 300s; val_bpb 1.097616>best 1.097131; reset f487b74
+ADAPT	0.000000	0.0	adapt	parameter adaptation at iter 150	0.000	ADAPT	θ_guard: 0.3→0.3; θ_break: 0.8→0.8 | bins: GUARD [0,0.2)4/4k [0.2,0.4)2/5k rest insuff; BREAK [0.6,0.8)5/23k [0.8,1)18/74k; no δ-bin with ≥3 GUARD and ≥3 BREAK jointly for crossover; keep prior (clamp ok)
+bba0873	1.097871	16.3	discard	ROPE_BASE 106000 to 107500 (+1.4%)	0.839	BREAK	δ≈0.839>θ_break 0.8 S=0.8 RR=0.8 ID≈0.0028; run_iter151.log full 300s; val_bpb 1.097871>best 1.097131; reset f487b74
+5761c1e	1.097290	16.3	discard	ROPE_BASE 106000 to 104000 (~-1.9%)	0.839	BREAK	δ≈0.839>θ_break 0.8; run_iter152.log full 300s; val_bpb 1.097290>best 1.097131; reset f487b74
+12cb418	1.097457	16.3	discard	EMBEDDING_LR 0.648 to 0.660 (+1.85%)	0.837	BREAK	δ=0.837>θ_break 0.8 S=0.8 RR=0.8 ID=0.015; run_iter153.log full; val_bpb 1.097457>best 1.097131; reset f487b74
+0ff65fb	1.097509	16.3	discard	UNEMBEDDING_LR 0.0042 to 0.00433 (+3.1%)	0.837	BREAK	δ≈0.837>θ_break 0.8; run_iter154.log full; val_bpb 1.097509>best 1.097131; reset f487b74
+41e4484	0.000000	0.0	crash	hoist head_dim in init_weights; drop duplicate rotary line	0.757	SIMPLIFY	δ≈0.757 θ_guard≤δ≤θ_break 0.3–0.8 mid-band SIMPLIFY; executor wall timeout mid-train no val_bpb in run.log; reset f487b74
+e843401	1.097699	16.3	discard	hoist head_dim retry (nohup+timeout 520 full run)	0.757	SIMPLIFY	δ≈0.757 mid-band SIMPLIFY equiv init; val_bpb 1.097699>best 1.097131; reset f487b74
+6d05841	1.097699	16.3	discard	MATRIX_LR 0.0565 to 0.0578 (+2.3% Muon)	0.839	BREAK	δ≈0.839>θ_break 0.8 S=RR=0.8 ID≈0.003; val_bpb 1.097699>best 1.097131; reset f487b74
+45dc201	1.304573	16.3	discard	Muon ns_steps 6 to 5 (polar express)	0.920	BREAK	δ=0.92>θ_break 0.8 S=RR=0.9 ID=0; run_iter155.log full 300s; val_bpb 1.304573>>1.097131 (possible GPU contention with parallel uv runs); reset f487b74
+b8753ce	1.098228	16.3	discard	WARMDOWN_RATIO 0.42 to 0.38 (longer full-LR plateau)	1.000	BREAK	δ=1.0>θ_break 0.8 S=RR=1.0 ID=0; run_iter156.log; val_bpb 1.098228>best 1.097131; reset f487b74
+1679b53	0.000000	0.0	crash	TOTAL_BATCH_SIZE 2^19 to 2^18; executor wall timeout ~step100 no val_bpb	1.000	BREAK	δ=1.0 S=RR=1 ID=0 θ_break=0.8; half tokens/opt-step; MCP train cmd timed out before eval; reset f487b74
+3a8ee00	1.079446	16.3	keep	TOTAL_BATCH_SIZE 2^19 to 2^18 grad_accum 8 to 4	1.000	BREAK	δ=1.0 S=RR=1 ID=0 θ_break=0.8; nohup full run run_iter158_full.log; val_bpb 1.079446<1.097131 prior best; advance
+9b31071	1.224240	16.3	discard	SCALAR_LR 0.525 to 0.532 (+1.3% Adam on resid/x0)	0.259	GUARD	δ=0.259 S=0.9 RR=0.9 ID≈3.30 θ_guard=0.3 θ_break=0.8; GUARD scalar LR; full run run_iter159.log; val_bpb 1.224240>>best 1.079446; reset 3a8ee00
+a6fe09c	1.079693	16.3	discard	WINDOW_PATTERN SSSS depth6 (short win layers 0-4 full last)	1.000	BREAK	δ=1.0 S=RR=1.0 ID=0 θ_break=0.8; more steps/~550 in 300s vs LLLL; val_bpb 1.079693>best 1.079446; reset 3a8ee00
+1f5a70c	1.079949	16.3	discard	ADAM_BETAS beta1 0.72 to 0.74	1.000	BREAK	δ=1.0 S=RR=1.0 ID=0 θ_break=0.8; slower AdamW m1 on non-Muon; run_iter161.log; val_bpb 1.079949>best 1.079446; reset 3a8ee00
+37f45fe	0.000000	0.0	crash	MATRIX_LR 0.0565 to 0.0570 GUARD	0.241	GUARD	δ≈0.241<θ_guard 0.3; MCP run_command wall timeout ~600s before eval; run.log partial ~step101 no val_bpb; reset 3a8ee00
+e621010	1.079960	16.3	discard	MATRIX_LR 0.0565 to 0.0570 (+0.88% Muon)	0.241	GUARD	δ≈0.241<θ_guard 0.3; solo GPU run_iter163_clean.log after killing stray procs; val_bpb 1.079960>best 1.079446; reset 3a8ee00
+4fbe36f	1.079616	16.3	discard	FINAL_LR_FRAC 0.12 to 0.125 (+4% tail floor)	0.241	GUARD	δ≈0.241<θ_guard 0.3; nohup run_iter164.log full 300s; val_bpb 1.079616>best 1.079446; reset 3a8ee00
+0744b5f	1.079372	16.3	keep	EMBEDDING_LR 0.648 to 0.651 (+0.46%)	0.241	GUARD	δ≈0.241<θ_guard 0.3; setsid run_iter165.log full 300s; val_bpb 1.079372<1.079446 prior best; advance
+ae8ca80	1.079815	16.3	discard	SIMPLIFY: remove num_scaling_params; compact estimate_flops; polar tuple	0.490	SIMPLIFY	delta~0.490 mid-band theta_g=0.3 theta_b=0.8; train.py 597->576 lines; screen run_iter166_screen.log full 300s; val_bpb 1.079815>best 1.079372; reset 0744b5f
+5f3c4c9	1.079584	16.3	discard	SIMPLIFY: inline build_model_config + LR schedule (no helpers)	0.490	SIMPLIFY	delta~0.490 mid-band; train.py 597->591 lines; screen run_iter167_screen.log; val_bpb 1.079584>best 1.079372; reset 0744b5f
+e8d7211	1.089826	16.3	discard	one-cycle LR: first half ramp 0.1-1, second cosine to FINAL_LR_FRAC	0.837	BREAK	δ=0.837>θ_break 0.8 S=0.8 RR=0.8 ID≈0.014; replaces plateau+warmdown; val_bpb 1.089826>best 1.079372; reset 0744b5f
+b294fed	1.081750	16.2	discard	SwiGLU FFN hidden 3.5x to 3.45x n_embd	0.920	BREAK	δ=0.92>θ_break 0.8; narrower FFN; solo run_iter172_clean.log; val_bpb 1.081750>best 1.079372; reset 0744b5f
+b79220d	1.079099	16.3	keep	SCALAR_LR 0.525 to 0.532 (+1.3% Adam on resid/x0)	0.920	BREAK	δ=0.92 S=0.9 RR=0.9 ID≈0 (_ct_metrics); θ_break=0.8; nudge scalar Adam on resid_lambdas/x0_lambdas; val_bpb 1.079099<1.079372 prior best; advance
+f2c46c1	0.000000	0.0	crash	MATRIX_LR 0.0565 to 0.0573 (+1.42% Muon)	0.840	BREAK	δ=0.84>θ_break 0.8 S=RR=0.8 ID=0; shell-executor MCP wall limit + overlapping uv runs left no val_bpb in run.log; abandoned commit; reset b79220d
+d52d3e4	1.079418	16.3	discard	WINDOW_PATTERN LLSL mid-stack short window vs LLLL	0.833	BREAK	δ=0.833>θ_break 0.8 S=0.8 RR=0.8 ID≈0.034; LLSL hurt val_bpb vs best 1.079099; reset b79220d
+aa99a4e	1.081441	16.4	discard	SwiGLU hidden 57/16 n_embd (~3.56x vs 7/2)	0.833	BREAK	δ≈0.833>θ_break 0.8; wider FFN +295k params; run_iter173_ffn.log; val_bpb 1.081441>best 1.079099; reset b79220d
+0712da4	1.078397	16.3	keep	WARMDOWN_RATIO 0.42 to 0.48 (earlier cosine LR tail)	0.840	BREAK	δ=0.84>θ_break 0.8 S=0.8 RR=0.8 ID=0; plateau ends ~52pct time vs 58pct; full run run.log; val_bpb 1.078397<1.079099 prior best; advance
+cab936f	1.078397	16.3	discard	SIMPLIFY compact num_scaling_params; trim GPT __init__ comments	0.760	SIMPLIFY	δ=0.76 θ_guard≤δ≤θ_break 0.3–0.8; equiv refactor −5 LOC; val_bpb tied best 1.078397; reset 0712da4
+0ccc721	1.078397	16.3	discard	WARMDOWN_RATIO 0.48 to 0.50 earlier cosine	0.840	BREAK	δ=0.84>θ_break 0.8; val_bpb tied best 1.078397; reset 0712da4
+e2b3ef0	1.078397	16.3	discard	ROPE_BASE 106000 to 105500	0.840	BREAK	δ=0.84>θ_break 0.8; val_bpb tied best 1.078397; reset 0712da4
+158c8a9	1.078397	16.3	discard	WARMDOWN_RATIO 0.48 to 0.46 (longer high-LR plateau)	0.840	BREAK	val_bpb tied best 1.078397 per protocol equal→reset; run.log full 300s
+f0a642d	1.078397	16.3	discard	WARMDOWN_RATIO 0.48 to 0.47 (mid sweep)	0.840	BREAK	δ=0.84>θ_break 0.8; val_bpb tied best 1.078397 vs 0712da4; reset 0712da4
+da01680	0.000000	0.0	crash	MATRIX_LR 0.0565 to 0.0568 (+0.53% Muon)	0.840	BREAK	δ=0.84>θ_break 0.8; MCP run_command wall timeout / incomplete run.log no val_bpb; reset 0712da4
+1947034	1.078473	16.3	discard	WEIGHT_DECAY 0.2 to 0.185 (lower Muon base WD)	0.920	BREAK	δ=0.92 S=RR=0.9 ID=0 θ_break=0.8; full run run.log; val_bpb 1.078473>best 1.078397; reset 0712da4
+b854b61	0.000000	0.0	crash	ve_gate input channels 12 to 10	0.920	BREAK	δ=0.92>θ_break 0.8; bg/MCP run ended before eval no val_bpb in run_iter185_ve10.log; reset 0712da4
+e26d75e	1.079016	16.3	discard	Muon WD floor 15pct base vs linear-to-zero	0.920	BREAK	δ=0.92>θ_break 0.8; val_bpb 1.079016>best 1.078397; run.log full 300s; reset 0712da4
+c8da6fc	1.078759	16.3	discard	ADAM_BETAS beta1 0.72 to 0.71	0.920	BREAK	δ=0.92 S=RR=0.9 ID=0 θ_break=0.8; val_bpb 1.078759>best 1.078397; reset 0712da4
+27f6e2e	1.078494	16.3	discard	FINAL_LR_FRAC 0.12 to 0.115 (lower tail floor)	1.000	BREAK	δ=1.0 S=RR=1.0 ID=0 θ_break=0.8; val_bpb 1.078494>best 1.078397; reset 0712da4
+8ae34dc	0.000000	0.0	crash	TOTAL_BATCH_SIZE 2**17 grad_accum 2 more opt steps	1.000	BREAK	δ=1.0>θ_break 0.8; train aborted ~step85 no val_bpb (wrapper/MCP); reset 0712da4
+dc389d6	0.000000	0.0	crash	FINAL_LR_FRAC 0.12 to 0.11 (cosine tail floor)	1.000	BREAK	δ=1.0>θ_break 0.8; nohup run stopped ~step85 no val_bpb/train_finished.flag; reset 0712da4
+d8c8c45	0.000000	0.0	crash	train-only label_smoothing 0.01 eval hard CE	1.000	BREAK	δ=1.0 S=RR=1.0 ID=0 θ_break=0.8; MCP timeout + nohup died ~step122 run.log no val_bpb; reset 0712da4
+97564d1	0.000000	0.0	crash	ROPE_BASE 106000 to 106250	1.000	BREAK	δ=1.0 S=RR=1 ID=0 θ_break=0.8; MCP run_command 900s wall timeout mid-train ~step101 no val_bpb; reset 0712da4
+db9a0e6	1.079673	16.3	discard	ROPE_BASE 106000 to 106250 (solo GPU full 300s)	1.000	BREAK	δ=1.0>θ_break 0.8; stray train procs killed first; val_bpb 1.079673>best 1.078397; reset 0712da4
+dc4cf17	1.079673	16.3	discard	WARMDOWN_RATIO 0.48 to 0.44	1.000	BREAK	δ=1.0>θ_break 0.8; nohup full run run.log; val_bpb 1.079673>best 1.078397; reset 0712da4
+e42d60c	1.079627	16.3	discard	UNEMBEDDING_LR 0.0042 to 0.00412 (~-1.9%)	1.000	BREAK	δ=1.0 S=RR=1.0 last10 ID=0 θ_break=0.8; lower lm_head LR; val_bpb 1.079627>best 1.078397; run_iter196.log full 300s; reset 0712da4
+12acf81	1.079304	16.3	discard	ROPE_BASE 106000 to 105800 (-0.19%)	1.000	BREAK	δ=1.0 S=RR=1.0 last10 ID=0 θ_break=0.8; val_bpb 1.079304>best 1.078397; run_iter197.log full 300s; reset 0712da4
+88d9ba6	1.079248	16.3	discard	Muon momentum terminal 0.95 to 0.955 (300-step ramp)	1.000	BREAK	δ=1.0 S=RR=1.0 ID=0 θ_break=0.8; run_iter198_sync.log full; val_bpb 1.079248>best 1.078397; reset 0712da4
+4d5de20	0.000000	0.0	crash	value embeddings on all layers has_ve True	1.000	BREAK	δ=1.0>θ_break 0.8; train died ~step121 no val_bpb; VE params ~25M vs ~12.6M prior likely OOM/kill; reset 0712da4
+a2dd90a	1.159957	8.4	discard	DEVICE_BATCH 16 grad_accum 8 same TOTAL_BATCH	1.000	BREAK	δ=1.0>θ_break 0.8; val_bpb 1.159957>>best 1.078397; ~279 steps/300s noisy opt vs 32-batch baseline; reset 0712da4
+03976d8	1.080316	16.3	discard	x0_lambdas init 0.1 to 0.115 (x0 residual injection)	1.000	BREAK	δ=1.0 S=RR=1.0 last10 ID=0 θ_break=0.8; BREAK init scale; val_bpb 1.080316>best 1.078397; full run run.log; reset 0712da4
+d1fad32	1.078147	16.3	keep	WARMDOWN_RATIO 0.48 to 0.49 (longer full-LR plateau)	1.000	BREAK	δ=1.0 S=RR=1.0 last10 ID=0 θ_break=0.8; schedule BREAK; val_bpb 1.078147<1.078397 prior best; advance
+a85523e	1.078373	16.3	discard	FINAL_LR_FRAC 0.12 to 0.122 (cosine tail floor)	0.909	BREAK	δ≈0.909>θ_break 0.8; val_bpb 1.078373>best 1.078147; run_iter200_pre.log; reset d1fad32
+ADAPT	0.000000	0.0	adapt	parameter adaptation at iter 200	0.000	ADAPT	θ_guard: 0.3→0.3; θ_break: 0.8→0.8 | bins: [0,0.2) G 4/4k [0.2,0.4) G 3/10k [0.6,0.8) B 5/23k [0.8,1) B 22/115k; no δ-bin with ≥3 GUARD and ≥3 BREAK jointly; keep prior thresholds (clamp ok)
